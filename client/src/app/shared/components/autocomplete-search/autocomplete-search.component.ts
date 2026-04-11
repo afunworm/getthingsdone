@@ -17,7 +17,7 @@ export interface AutocompleteResult {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="ac-wrap" [class.ac-committed]="committed()">
+    <div class="ac-wrap">
       <input
         #inputEl
         class="field-input ac-input"
@@ -27,9 +27,6 @@ export interface AutocompleteResult {
         [placeholder]="placeholder"
         autocomplete="off"
       />
-      @if (committed()) {
-        <span class="ac-commit-icon material-icons">check</span>
-      }
 
       @if (results().length > 0) {
         <div class="ac-dropdown" #dropdownEl>
@@ -53,34 +50,15 @@ export interface AutocompleteResult {
         </div>
       }
 
-      @if (query && !results().length && !committed() && loaded()) {
+      @if (query && !results().length && loaded()) {
         <div class="ac-dropdown">
           <div class="ac-empty">No matches found</div>
         </div>
-      }
-
-      @if (committed()) {
-        <div class="ac-confirm-hint">Press Enter to add</div>
       }
     </div>
   `,
   styles: [`
     .ac-wrap { position: relative; width: 100%; }
-
-    .ac-input { padding-right: 28px !important; }
-
-    .ac-commit-icon {
-      position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
-      font-size: 15px; color: #16a34a; pointer-events: none;
-    }
-    .ac-committed .ac-input {
-      border-color: #16a34a !important;
-      background: color-mix(in srgb, #16a34a 5%, transparent) !important;
-    }
-
-    .ac-confirm-hint {
-      font-size: 11px; color: #16a34a; margin-top: 3px; padding-left: 2px;
-    }
 
     .ac-dropdown {
       position: absolute; left: 0; right: 0; bottom: calc(100% + 3px);
@@ -126,7 +104,6 @@ export class AutocompleteSearchComponent implements OnInit {
   query = '';
   results = signal<AutocompleteResult[]>([]);
   activeIndex = signal(-1);
-  committed = signal<AutocompleteResult | null>(null);
   loaded = signal(false);
 
   private allUsers: any[] = [];
@@ -140,8 +117,6 @@ export class AutocompleteSearchComponent implements OnInit {
   }
 
   onInput(): void {
-    // Typing clears any committed selection
-    this.committed.set(null);
     this.activeIndex.set(-1);
 
     const q = this.query.toLowerCase().trim();
@@ -189,25 +164,12 @@ export class AutocompleteSearchComponent implements OnInit {
         this.results.set([]);
         this.activeIndex.set(-1);
       }
-      return;
-    }
-
-    // Dropdown is closed — second Enter confirms the committed item
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const c = this.committed();
-      if (c) {
-        this.selected.emit(c);
-        this.query = '';
-        this.committed.set(null);
-      }
     }
   }
 
-  /** Fill the input with the chosen result and close the dropdown. Does NOT emit yet. */
   commit(r: AutocompleteResult): void {
-    this.query = r.name;
-    this.committed.set(r);
+    this.selected.emit(r);
+    this.query = '';
     this.results.set([]);
     this.activeIndex.set(-1);
   }

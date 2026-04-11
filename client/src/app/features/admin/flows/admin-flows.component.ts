@@ -160,7 +160,7 @@ function preset(i: number) { return PRESETS[i % PRESETS.length]; }
                   <button class="btn-icon" (click)="startEdit(flow)" title="Edit">
                     <span class="material-icons" style="font-size:15px">edit</span>
                   </button>
-                  <button class="btn-icon" (click)="deleteFlow(flow)" title="Delete">
+                  <button class="btn-icon" (click)="deleteFlow(flow)" title="Delete" [disabled]="flows().length <= 1">
                     <span class="material-icons" style="font-size:15px;color:#d32f2f">delete</span>
                   </button>
                 </div>

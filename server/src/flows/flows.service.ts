@@ -74,8 +74,11 @@ export class FlowsService {
   }
 
   delete(id: string) {
-    const result = this.db.prepare('DELETE FROM flow_templates WHERE id = ?').run(id);
-    if (result.changes === 0) throw new NotFoundException();
+    if (!this.db.prepare('SELECT 1 FROM flow_templates WHERE id = ?').get(id))
+      throw new NotFoundException();
+    const count = (this.db.prepare('SELECT COUNT(*) as n FROM flow_templates').get() as any).n;
+    if (count <= 1) throw new BadRequestException('Cannot delete the last flow template');
+    this.db.prepare('DELETE FROM flow_templates WHERE id = ?').run(id);
   }
 
   private parse(row: any) {
