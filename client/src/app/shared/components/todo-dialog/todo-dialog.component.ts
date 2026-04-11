@@ -8,6 +8,7 @@ import { DialogRef, DIALOG_DATA, Dialog } from '@angular/cdk/dialog';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { PriorityService } from '../../../core/services/priority.service';
 import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
@@ -111,6 +112,36 @@ const DEFAULT_STEPS: StepDef[] = [
               {{ assigneeLabel }}
             </button>
           }
+
+          <!-- Priority -->
+          <div class="pri-wrap">
+            <button class="meta-chip meta-pri-btn"
+              [class.meta-pri-active]="todo.priority > 0"
+              [style.color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) : ''"
+              [style.border-color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) + '55' : ''"
+              (click)="priorityOpen.set(!priorityOpen())"
+              title="Set priority">
+              <span class="material-icons" style="font-size:12px">priority_high</span>
+              {{ todo.priority > 0 ? prioritySvc.getLabel(todo.priority) : 'Priority' }}
+            </button>
+            @if (priorityOpen()) {
+              <div class="pri-backdrop" (click)="priorityOpen.set(false)"></div>
+              <div class="pri-menu">
+                <button class="pri-opt" [class.pri-opt-active]="todo.priority === 0" (click)="setPriority(0)">
+                  <span class="material-icons" style="font-size:13px;color:var(--text-muted)">priority_high</span>
+                  None
+                  @if (todo.priority === 0) { <span class="material-icons" style="font-size:13px;margin-left:auto">check</span> }
+                </button>
+                @for (lvl of prioritySvc.levels(); track lvl.value) {
+                  <button class="pri-opt" [class.pri-opt-active]="todo.priority === lvl.value" (click)="setPriority(lvl.value)">
+                    <span class="material-icons" style="font-size:13px" [style.color]="lvl.color">priority_high</span>
+                    {{ lvl.label }}
+                    @if (todo.priority === lvl.value) { <span class="material-icons" style="font-size:13px;margin-left:auto;color:var(--text-secondary)">check</span> }
+                  </button>
+                }
+              </div>
+            }
+          </div>
 
           <!-- Recurring (display only — edit in Schedule section) -->
           @if (todo.is_recurring) {
@@ -1073,6 +1104,30 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .comment-compose { display: flex; flex-direction: column; gap: 6px; }
 
+    /* Priority picker */
+    .pri-wrap { position: relative; }
+    .meta-pri-btn {
+      cursor: pointer;
+      &:hover { border-color: var(--accent-color); color: var(--accent-color); }
+    }
+    .meta-pri-active { font-weight: 600; }
+    .pri-backdrop { position: fixed; inset: 0; z-index: 50; }
+    .pri-menu {
+      position: absolute; top: calc(100% + 4px); left: 0;
+      background: var(--surface-card); border: 1px solid var(--surface-border);
+      border-radius: 8px; box-shadow: var(--shadow-md);
+      padding: 4px; min-width: 130px; z-index: 51;
+    }
+    .pri-opt {
+      display: flex; align-items: center; gap: 6px;
+      width: 100%; padding: 5px 10px; border: 0;
+      background: transparent; cursor: pointer;
+      font-family: inherit; font-size: 12px; color: var(--text-secondary);
+      text-align: left; border-radius: 5px; transition: background 100ms;
+      &:hover { background: var(--surface-hover); color: var(--text-primary); }
+      &.pri-opt-active { color: var(--text-primary); font-weight: 500; }
+    }
+
     /* Creator picker */
     .creator-wrap { position: relative; }
     .meta-creator-btn {
@@ -1112,6 +1167,7 @@ export class TodoDialogComponent implements OnInit {
   data: any = inject(DIALOG_DATA);
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  readonly prioritySvc = inject(PriorityService);
   private dialog = inject(Dialog);
   private cdr = inject(ChangeDetectorRef);
   private sanitizer = inject(DomSanitizer);
@@ -1134,6 +1190,7 @@ export class TodoDialogComponent implements OnInit {
   accessibleUsers = signal<any[]>([]);
   creatorPickerOpen = signal(false);
   stepPickerOpen    = signal(false);
+  priorityOpen      = signal(false);
   lightboxItem = signal<{ url: string; mimetype: string; name: string; safeUrl?: any } | null>(null);
   lightboxHtml = signal<any>(null);
   lightboxLoading = signal(false);
@@ -1407,6 +1464,15 @@ subNextStepLabel(sub: any): string {
           ),
         };
       }
+    });
+  }
+
+  // ── Priority ──────────────────────────────────────────
+  setPriority(priority: number): void {
+    this.todo = { ...this.todo, priority };
+    this.priorityOpen.set(false);
+    this.api.patch<any>(`/todos/${this.todo.id}`, { priority }).subscribe((updated) => {
+      this.todo = { ...this.todo, ...updated };
     });
   }
 
