@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, Input, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, OnChanges, SimpleChanges, inject, signal, Input, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -274,7 +274,7 @@ import { PriorityService } from '../../../core/services/priority.service';
     @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
-export class ProjectDetailComponent implements OnInit, OnDestroy {
+export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   @Input() id!: string;
 
   private api      = inject(ApiService);
@@ -408,6 +408,16 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     this.refreshSub = this.notifSvc.refresh$
       .pipe(filter((p) => p.projectId === this.id))
       .subscribe(() => this.loadTodos());
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['id'] && !changes['id'].isFirstChange()) {
+      this.project.set(null);
+      this.todos.set([]);
+      this.dragState.currentProjectId.set(this.id);
+      this.loadProject();
+      this.loadTodos();
+    }
   }
 
   ngOnDestroy(): void {

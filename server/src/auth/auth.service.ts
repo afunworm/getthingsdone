@@ -91,6 +91,13 @@ export class AuthService {
         'INSERT INTO users (id, pocketid_sub, email, name, role, timezone) VALUES (?, ?, ?, ?, ?, ?)',
       ).run(id, sub, email, name, isFirst ? 'admin' : 'user', defaultTz);
       user = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+
+      if (isFirst) {
+        this.db.prepare(
+          `INSERT INTO flow_templates (id, name, steps, is_default, created_by)
+           VALUES (?, 'Default', '["New","In Progress","Done"]', 1, ?)`,
+        ).run(uuidv4(), id);
+      }
     } else {
       this.db.prepare(
         'UPDATE users SET email = ?, name = ?, updated_at = unixepoch() WHERE id = ?',
