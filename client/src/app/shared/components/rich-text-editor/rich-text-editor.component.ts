@@ -217,12 +217,12 @@ export class RichTextEditorComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['content'] && this.editor && !changes['content'].isFirstChange()) {
-      this.editor.commands.setContent(changes['content'].currentValue || '', false);
+      this.editor.commands.setContent(changes['content'].currentValue || '');
     }
   }
 
   setContent(html: string): void {
-    this.editor?.commands.setContent(html, false);
+    this.editor?.commands.setContent(html);
   }
 
   pick(user: { id: string; name: string }) {

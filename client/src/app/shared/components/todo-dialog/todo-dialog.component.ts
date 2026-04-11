@@ -1258,7 +1258,7 @@ export class TodoDialogComponent implements OnInit {
     if (!this.isCreate) {
       this.api.get<any[]>(`/comments/todo/${this.todo.id}`).subscribe((c) => this.comments.set(c));
       this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((r) => this.reminders.set(r));
-      this.todoAttachments.set(this.todo.attachments ?? []);
+      this.api.get<any>(`/todos/${this.todo.id}`).subscribe((t) => this.todoAttachments.set(t.attachments ?? []));
       if (this.todo.project_id) {
         this.api.get<any[]>(`/projects/${this.todo.project_id}/users`).subscribe((u) => this.accessibleUsers.set(u));
       }
