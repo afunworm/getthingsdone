@@ -10,7 +10,7 @@ import { AuthService } from '../../../core/auth/auth.service';
         <div class="login-logo">
           <div class="logo-mark">✓</div>
           <h1>Get Things Done</h1>
-          <p class="logo-by">by Bryan</p>
+          <p class="logo-by">by bryan</p>
           <p>Team task management with clear flow</p>
         </div>
 
