@@ -265,7 +265,7 @@ export class AdminFlowsComponent implements OnInit {
 
   private freshSteps(): FlowStep[] {
     return [
-      { label: 'New',         ...preset(0) },
+      { label: 'To-Do',       ...preset(9) },
       { label: 'In Progress', ...preset(1) },
       { label: 'Done',        ...preset(2) },
     ];

@@ -158,11 +158,22 @@ export class ProjectsService {
 
   update(id: string, dto: {
     name?: string; description?: string | null; dueDate?: number | null;
-    color?: string; emoji?: string | null;
+    color?: string; emoji?: string | null; flowTemplateId?: string;
   }, userId: string, userRole: string) {
     const project = this.db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
     if (!project) throw new NotFoundException();
     if (userRole !== 'admin' && project.owner_id !== userId) throw new ForbiddenException();
+
+    let flowTemplateId = project.flow_template_id;
+    let flowSteps = project.flow_steps;
+
+    if (dto.flowTemplateId && dto.flowTemplateId !== project.flow_template_id) {
+      if (userRole !== 'admin') throw new ForbiddenException();
+      const flow = this.db.prepare('SELECT * FROM flow_templates WHERE id = ?').get(dto.flowTemplateId) as any;
+      if (!flow) throw new BadRequestException('Flow template not found');
+      flowTemplateId = flow.id;
+      flowSteps = flow.steps;
+    }
 
     this.db.prepare(`
       UPDATE projects SET
@@ -171,6 +182,8 @@ export class ProjectsService {
         due_date = ?,
         color = COALESCE(?, color),
         emoji = ?,
+        flow_template_id = ?,
+        flow_steps = ?,
         updated_at = unixepoch()
       WHERE id = ?
     `).run(
@@ -179,6 +192,8 @@ export class ProjectsService {
       dto.dueDate !== undefined ? dto.dueDate : project.due_date,
       dto.color ?? null,
       dto.emoji !== undefined ? dto.emoji : project.emoji,
+      flowTemplateId,
+      flowSteps,
       id,
     );
 

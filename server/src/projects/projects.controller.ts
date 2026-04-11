@@ -34,7 +34,7 @@ export class ProjectsController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() dto: { name?: string; description?: string; dueDate?: number; color?: string; emoji?: string },
+    @Body() dto: { name?: string; description?: string; dueDate?: number; color?: string; emoji?: string; flowTemplateId?: string },
     @CurrentUser() user: any,
   ) {
     return this.projectsService.update(id, dto, user.id, user.role);

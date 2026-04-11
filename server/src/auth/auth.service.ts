@@ -95,7 +95,7 @@ export class AuthService {
       if (isFirst) {
         this.db.prepare(
           `INSERT INTO flow_templates (id, name, steps, is_default, created_by)
-           VALUES (?, 'Default', '["New","In Progress","Done"]', 1, ?)`,
+           VALUES (?, 'Default', '[{"label":"To-Do","color":"#424242","bg":"#f5f5f5"},{"label":"In Progress","color":"#e65100","bg":"#fff3e0"},{"label":"Done","color":"#1b5e20","bg":"#e8f5e9"}]', 1, ?)`,
         ).run(uuidv4(), id);
       }
     } else {

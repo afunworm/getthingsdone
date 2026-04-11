@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogRef, DIALOG_DATA } from '@angular/cdk/dialog';
 import { ApiService } from '../../../core/services/api.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { AutocompleteSearchComponent, AutocompleteResult } from '../../../shared/components/autocomplete-search/autocomplete-search.component';
 
 const COLOR_PRESETS = [
