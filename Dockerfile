@@ -12,20 +12,16 @@ WORKDIR /build/server
 COPY server/package*.json ./
 RUN npm ci
 COPY server/ ./
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
 # ── Stage 3: Production image ─────────────────────────────────────────────────
-FROM node:22-alpine AS production
-RUN apk add --no-cache python3 make g++
+FROM node:22-slim AS production
 
 WORKDIR /app
 
-# Server production deps
-COPY server/package*.json ./server/
-RUN cd server && npm ci --omit=dev
-
 # Copy built artifacts
 COPY --from=server-build /build/server/dist ./server/dist
+COPY --from=server-build /build/server/node_modules ./server/node_modules
 COPY --from=client-build /build/client/dist ./client/dist
 
 # Copy migrations (needed at runtime)

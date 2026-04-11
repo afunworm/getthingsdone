@@ -1,20 +1,20 @@
 volumes:
-    db_data:
-    uploads_data:
+  gtd_data:
+  gtd_uploads:
 
 networks:
-    dokploy-network:
-        external: true
+  dokploy-network:
+  external: true
 
 services:
-    app:
-        build: .
-        networks:
-            - dokploy-network
-        env_file:
-            # Copy from ./server/.env.example
-            - ./.env
-        volumes:
-            - db_data:/app/server/data
-            - uploads_data:/app/server/uploads
-        restart: unless-stopped
+  app:
+    build: .
+    networks:
+      - dokploy-network
+    env_file:
+      # Copy from ./server/.env.example
+      - ./.env
+    volumes:
+      - gtd_data:/app/server/data
+      - gtd_uploads:/app/server/uploads
+    restart: unless-stopped
