@@ -3,14 +3,14 @@ volumes:
   gtd_uploads:
 
 networks:
-  dokploy-network:
+  pangolin:
     external: true
 
 services:
   gtd:
     build: .
     networks:
-      - dokploy-network
+      - pangolin
     env_file:
       # Copy from ./server/.env.example
       - ./.env
