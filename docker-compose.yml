@@ -4,7 +4,7 @@ volumes:
 
 networks:
   dokploy-network:
-  external: true
+    external: true
 
 services:
   app:
