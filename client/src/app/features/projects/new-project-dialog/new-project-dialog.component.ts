@@ -12,6 +12,11 @@ const COLOR_PRESETS = [
   '#64748b', '#1e293b',
 ];
 
+const HIGHLIGHT_PRESETS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#3b82f6', '#8b5cf6', '#ec4899',
+];
+
 const EMOJI_PRESETS = [
   '📥','📬','📋','✅','🚀','⭐','🔥','💡','🎯','📊',
   '🛠️','🔧','📝','🗂️','🎨','🏆','💼','🔔','⚡','🌐',
@@ -195,6 +200,42 @@ const EMOJI_PRESETS = [
           }
         </div>
 
+        <!-- Display Settings -->
+        <div class="field">
+          <label class="field-label">Display settings</label>
+          <div class="pref-card">
+            <label class="pref-row">
+              <input type="checkbox" [(ngModel)]="prefs.show_task_count" />
+              Show task count badge
+            </label>
+            @if (prefs.show_task_count) {
+              <div class="pref-sub">
+                <select class="field-select" [(ngModel)]="prefs.count_mode">
+                  <option value="new">New tasks only (first step)</option>
+                  <option value="all">All tasks</option>
+                </select>
+              </div>
+            }
+            <div class="pref-divider"></div>
+            <label class="pref-row">
+              <input type="checkbox" [checked]="!!prefs.highlight_color"
+                (change)="toggleHighlight($event)" />
+              Highlight sidebar row when tasks exist
+            </label>
+            @if (prefs.highlight_color) {
+              <div class="pref-sub">
+                <div class="color-grid">
+                  @for (c of highlightPresets; track c) {
+                    <button class="color-dot" [style.background]="c"
+                      [class.selected]="prefs.highlight_color === c"
+                      (click)="prefs.highlight_color = c" [title]="c"></button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
       </div>
 
       <!-- Footer -->
@@ -300,6 +341,20 @@ const EMOJI_PRESETS = [
       background: color-mix(in srgb, var(--accent-color) 5%, transparent);
       border: 1px dashed color-mix(in srgb, var(--accent-color) 30%, transparent);
     }
+
+    /* Display prefs */
+    .pref-card {
+      background: var(--surface-bg); border: 1px solid var(--surface-border);
+      border-radius: 8px; padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .pref-row {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--text-secondary); cursor: pointer;
+      input[type=checkbox] { cursor: pointer; accent-color: var(--accent-color); flex-shrink: 0; }
+    }
+    .pref-sub { padding-left: 22px; }
+    .pref-divider { height: 1px; background: var(--surface-border); }
   `],
 })
 export class NewProjectDialogComponent implements OnInit {
@@ -333,6 +388,14 @@ export class NewProjectDialogComponent implements OnInit {
     emoji: '',
   };
 
+  prefs = {
+    show_task_count: false,
+    count_mode: 'new' as 'new' | 'all',
+    highlight_color: null as string | null,
+  };
+
+  readonly highlightPresets = HIGHLIGHT_PRESETS;
+
   // currentMembers live-updated in edit mode
   currentMembers = signal<any[]>([]);
 
@@ -348,6 +411,12 @@ export class NewProjectDialogComponent implements OnInit {
         : '';
       this.form.flowTemplateId = p.flow_template_id ?? '';
       this.currentMembers.set(p.members ?? []);
+      // Load display prefs
+      if (p.user_pref) {
+        this.prefs.show_task_count = !!p.user_pref.show_task_count;
+        this.prefs.count_mode = p.user_pref.count_mode ?? 'new';
+        this.prefs.highlight_color = p.user_pref.highlight_color ?? null;
+      }
     }
 
     this.api.get<any[]>('/flows').subscribe((flows) => {
@@ -360,6 +429,11 @@ export class NewProjectDialogComponent implements OnInit {
   }
 
   isAdmin(): boolean { return this.auth.user()?.role === 'admin'; }
+
+  toggleHighlight(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.prefs.highlight_color = checked ? HIGHLIGHT_PRESETS[0] : null;
+  }
 
   canTransfer(): boolean { return true; }
 
@@ -433,13 +507,25 @@ export class NewProjectDialogComponent implements OnInit {
       if (this.isAdmin() && this.form.flowTemplateId) {
         body.flowTemplateId = this.form.flowTemplateId;
       }
-      this.api.patch<any>(`/projects/${this.project.id}`, body)
-        .subscribe((p) => this.dialogRef.close(p));
+      this.api.patch<any>(`/projects/${this.project.id}`, body).subscribe((p) => {
+        this.api.patch<any>(`/projects/${this.project.id}/prefs`, this.prefs).subscribe((pref) => {
+          this.dialogRef.close({ ...p, user_pref: pref });
+        });
+      });
     } else {
       body.flowTemplateId = this.form.flowTemplateId || undefined;
       body.memberUserIds = this.pendingMembers().filter((m) => !m.isTeam).map((m) => m.id);
       body.memberTeamIds = this.pendingMembers().filter((m) => m.isTeam).map((m) => m.id);
-      this.api.post<any>('/projects', body).subscribe((p) => this.dialogRef.close(p));
+      this.api.post<any>('/projects', body).subscribe((p) => {
+        const hasCustomPref = this.prefs.show_task_count || !!this.prefs.highlight_color;
+        if (hasCustomPref) {
+          this.api.patch<any>(`/projects/${p.id}/prefs`, this.prefs).subscribe((pref) => {
+            this.dialogRef.close({ ...p, user_pref: pref });
+          });
+        } else {
+          this.dialogRef.close(p);
+        }
+      });
     }
   }
 
