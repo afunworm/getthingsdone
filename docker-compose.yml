@@ -7,7 +7,7 @@ networks:
     external: true
 
 services:
-  app:
+  gtd:
     build: .
     networks:
       - dokploy-network
