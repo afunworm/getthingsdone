@@ -267,7 +267,8 @@ export class InboxComponent implements OnInit, OnDestroy {
   constructor() {
     effect(() => {
       if (this.settings.loaded()) {
-        this.hideDone.set(this.settings.get('inbox.hideDone') === '1');
+        const hd = this.settings.get('inbox.hideDone');
+        this.hideDone.set(hd === null ? true : hd === '1');
         const hr = this.settings.get('inbox.hideRecurring');
         this.hideRecurring.set(hr === null ? true : hr === '1');
       }

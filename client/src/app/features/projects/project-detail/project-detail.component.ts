@@ -322,7 +322,8 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   constructor() {
     effect(() => {
       if (this.settings.loaded() && this.id) {
-        this.hideDone.set(this.settings.get(`project.${this.id}.hideDone`) === '1');
+        const hd = this.settings.get(`project.${this.id}.hideDone`);
+        this.hideDone.set(hd === null ? true : hd === '1');
         const hr = this.settings.get(`project.${this.id}.hideRecurring`);
         this.hideRecurring.set(hr === null ? true : hr === '1');
       }
