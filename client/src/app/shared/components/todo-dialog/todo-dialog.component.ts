@@ -29,9 +29,13 @@ const DEFAULT_STEPS: StepDef[] = [
       <div class="dialog-header">
         @if (isCreate) {
           <span class="dialog-title">New Task</span>
+          <button class="btn-icon close-btn" (click)="close()">
+            <span class="material-icons" style="font-size:16px">close</span>
+          </button>
         } @else {
-          <div class="title-area">
-            @if (!editingTitle()) {
+          <div class="detail-header">
+            <!-- Row 1: flow chip + close -->
+            <div class="detail-step-row">
               <div class="step-chip-wrap">
                 <button class="step-chip step-chip-btn" [ngStyle]="stepStyle(todo.flow_step_index)"
                   (click)="stepPickerOpen.set(!stepPickerOpen())" title="Change step" tabindex="-1">
@@ -51,10 +55,18 @@ const DEFAULT_STEPS: StepDef[] = [
                   </div>
                 }
               </div>
-              <span class="task-title" (click)="startEditTitle()">{{ todo.title }}</span>
-              <button class="btn-icon edit-icon" (click)="startEditTitle()" title="Edit title">
-                <span class="material-icons" style="font-size:14px">edit</span>
+              <button class="btn-icon close-btn" (click)="close()">
+                <span class="material-icons" style="font-size:16px">close</span>
               </button>
+            </div>
+            <!-- Row 2: full task title -->
+            @if (!editingTitle()) {
+              <div class="detail-title-row" (click)="startEditTitle()">
+                <span class="task-title-full">{{ todo.title }}</span>
+                <button class="btn-icon edit-icon" (click)="$event.stopPropagation(); startEditTitle()" title="Edit title">
+                  <span class="material-icons" style="font-size:14px">edit</span>
+                </button>
+              </div>
             } @else {
               <input
                 #titleInput
@@ -67,9 +79,6 @@ const DEFAULT_STEPS: StepDef[] = [
             }
           </div>
         }
-        <button class="btn-icon close-btn" (click)="close()">
-          <span class="material-icons" style="font-size:16px">close</span>
-        </button>
       </div>
 
       @if (!isCreate) {
@@ -249,11 +258,21 @@ const DEFAULT_STEPS: StepDef[] = [
               }
             </div>
             @if (!editingDesc()) {
-              <p class="desc-text" [class.desc-muted]="!todo.description" (click)="startEditDesc()">
-                {{ todo.description || 'No description — click to add' }}
-              </p>
+              @if (todo.description) {
+                <div class="desc-html" [innerHTML]="sanitize(todo.description)" (click)="startEditDesc()"></div>
+              } @else {
+                <p class="desc-text desc-muted" (click)="startEditDesc()">No description — click to add</p>
+              }
             } @else {
-              <textarea class="field-textarea" [(ngModel)]="descDraft" rows="4" autoFocus></textarea>
+              <div class="rte-field rte-desc-field">
+                <app-rich-text-editor
+                  #descEditor
+                  [content]="descDraft"
+                  [users]="accessibleUsers()"
+                  placeholder="Add a description… (@ to mention)"
+                  (htmlChange)="descDraft = $event"
+                ></app-rich-text-editor>
+              </div>
               <div class="inline-actions">
                 <button class="btn btn-primary btn-sm" (click)="saveDesc()">Save</button>
                 <button class="btn btn-ghost btn-sm" (click)="editingDesc.set(false)">Cancel</button>
@@ -583,9 +602,23 @@ const DEFAULT_STEPS: StepDef[] = [
     .dialog-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     .close-btn { margin-left: auto; flex-shrink: 0; }
 
-    .title-area {
-      display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0;
+    /* Detail mode header (2-row layout) */
+    .detail-header { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+    .detail-step-row {
+      display: flex; align-items: center; justify-content: space-between;
     }
+    .detail-title-row {
+      display: flex; align-items: flex-start; gap: 6px;
+      cursor: pointer;
+      &:hover .task-title-full { color: var(--accent-color); }
+      &:hover .edit-icon { opacity: 1; }
+    }
+    .task-title-full {
+      flex: 1; font-size: 15px; font-weight: 600; color: var(--text-primary);
+      white-space: normal; word-break: break-word; line-height: 1.4;
+      transition: color 100ms;
+    }
+
     .step-chip-wrap { position: relative; flex-shrink: 0; }
     .step-chip {
       display: inline-flex; align-items: center;
@@ -615,15 +648,9 @@ const DEFAULT_STEPS: StepDef[] = [
       &:hover { filter: brightness(1.15); }
     }
     .step-opt-active { outline: 2px solid currentColor; outline-offset: -2px; }
-    .task-title {
-      flex: 1; font-size: 15px; font-weight: 600; color: var(--text-primary);
-      cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      &:hover { color: var(--accent-color); }
-    }
     .edit-icon {
       opacity: 0; flex-shrink: 0; color: var(--text-muted);
       transition: opacity 120ms;
-      .title-area:hover & { opacity: 1; }
       .section-hdr:hover & { opacity: 1; }
     }
     .title-input {
@@ -714,8 +741,25 @@ const DEFAULT_STEPS: StepDef[] = [
     .desc-text {
       margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-primary);
       cursor: pointer; padding: 4px 0;
-      &:hover { color: var(--accent-color); }
-      &.desc-muted { color: var(--text-muted); font-style: italic; }
+      &.desc-muted { color: var(--text-muted); font-style: italic; &:hover { color: var(--accent-color); } }
+    }
+    .desc-html {
+      font-size: 13px; line-height: 1.6; color: var(--text-primary);
+      cursor: pointer; padding: 4px 0; min-height: 22px;
+      &:hover { outline: 1px dashed var(--surface-border); border-radius: 4px; }
+      p { margin: 0 0 4px; &:last-child { margin-bottom: 0; } }
+      strong { font-weight: 600; }
+      em { font-style: italic; }
+      ul, ol { padding-left: 20px; margin: 4px 0; }
+      li { margin: 2px 0; }
+      code {
+        background: var(--surface-hover); border-radius: 3px;
+        padding: 1px 4px; font-size: 12px; font-family: monospace;
+      }
+    }
+    .rte-desc-field {
+      border: 1px solid var(--accent-color); border-radius: 6px;
+      padding: 6px 8px; background: var(--surface-card);
     }
     .inline-actions { display: flex; gap: 6px; margin-top: 6px; }
     .btn-sm { padding: 4px 12px; font-size: 12px; }
@@ -1062,6 +1106,7 @@ const DEFAULT_STEPS: StepDef[] = [
 export class TodoDialogComponent implements OnInit {
   @ViewChild('titleInput') titleInputRef?: ElementRef<HTMLInputElement>;
   @ViewChild('commentEditor') commentEditorRef?: RichTextEditorComponent;
+  @ViewChild('descEditor') descEditorRef?: RichTextEditorComponent;
 
   dialogRef = inject(DialogRef<any>);
   data: any = inject(DIALOG_DATA);
