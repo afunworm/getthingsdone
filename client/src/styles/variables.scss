@@ -1,0 +1,30 @@
+:root {
+  --surface-bg:       #f5f5f7;
+  --surface-card:     #ffffff;
+  --surface-border:   #e0e0e0;
+  --surface-hover:    #f0f0f0;
+  --text-primary:     #1a1a2e;
+  --text-secondary:   #5f6368;
+  --text-muted:       #9aa0a6;
+  --accent-color:     #3949ab;
+  --shadow-sm:        0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:        0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+  --radius-sm:        6px;
+  --radius-md:        10px;
+  --radius-lg:        16px;
+  --transition:       150ms cubic-bezier(.4,0,.2,1);
+
+  // ── Typography scale ──────────────────────
+  --text-xs:          11px;   // labels, badges, meta
+  --text-sm:          12px;   // secondary info
+  --text-base:        14px;   // body / list items  ← sidebar nav uses this
+  --text-md:          15px;   // sub-headings
+  --text-lg:          17px;   // page headings
+  --text-xl:          20px;   // large headings (used sparingly)
+
+  // ── Page layout ───────────────────────────
+  --page-px:          24px;   // horizontal page padding
+  --page-py:          20px;   // vertical page padding
+  --section-gap:      16px;   // gap between major sections
+}
+

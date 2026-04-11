@@ -1,0 +1,81 @@
+import {
+  Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, HttpCode,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { ProjectsService } from './projects.service';
+
+@Controller('projects')
+@UseGuards(JwtAuthGuard)
+export class ProjectsController {
+  constructor(private readonly projectsService: ProjectsService) {}
+
+  @Get()
+  findAll(@CurrentUser() user: any) {
+    return this.projectsService.findAll(user.id, user.role);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.projectsService.findById(id, user.id, user.role);
+  }
+
+  @Post()
+  create(
+    @Body() dto: {
+      name: string; description?: string; flowTemplateId?: string; dueDate?: number;
+      color?: string; emoji?: string; memberUserIds?: string[]; memberTeamIds?: string[];
+    },
+    @CurrentUser() user: any,
+  ) {
+    return this.projectsService.create(dto, user.id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: { name?: string; description?: string; dueDate?: number; color?: string; emoji?: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.projectsService.update(id, dto, user.id, user.role);
+  }
+
+  @Patch(':id/transfer')
+  transfer(
+    @Param('id') id: string,
+    @Body('newOwnerId') newOwnerId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.projectsService.transferOwnership(id, newOwnerId, user.id, user.role);
+  }
+
+  @Post(':id/members')
+  addMember(
+    @Param('id') projectId: string,
+    @Body() dto: { userId?: string; teamId?: string; permissions: string[] },
+    @CurrentUser() user: any,
+  ) {
+    return this.projectsService.addMember(projectId, dto as any, user.id, user.role);
+  }
+
+  @Get(':id/users')
+  getAccessibleUsers(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.projectsService.getAccessibleUsers(id, user.id, user.role);
+  }
+
+  @Delete(':id/members/:memberId')
+  @HttpCode(204)
+  removeMember(
+    @Param('id') projectId: string,
+    @Param('memberId') memberId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.projectsService.removeMember(projectId, memberId, user.id, user.role);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  delete(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.projectsService.delete(id, user.id, user.role);
+  }
+}

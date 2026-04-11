@@ -1,0 +1,36 @@
+# Claude Code local config
+.claude/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+client/.angular/
+
+# Runtime data
+server/data/
+server/uploads/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+
+# Docker local overrides
+docker-compose.override.yml

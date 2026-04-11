@@ -1,0 +1,157 @@
+@use 'styles/variables';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    background: var(--surface-bg);
+    color: var(--text-primary);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+}
+
+/* ── Custom drag-drop placeholder ───────────────────────────── */
+.dz-placeholder {
+  background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+  border: 1px dashed var(--accent-color);
+  border-radius: 6px;
+  pointer-events: none;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+@layer components {
+  /* ── Buttons ─────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border: 0; border-radius: 6px;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: opacity 120ms, background 120ms;
+    white-space: nowrap;
+    &:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+  }
+  .btn-primary {
+    background: var(--accent-color); color: #fff;
+    &:hover:not(:disabled) { opacity: .88; }
+  }
+  .btn-ghost {
+    background: transparent; color: var(--text-secondary);
+    &:hover:not(:disabled) { background: var(--surface-hover); }
+  }
+  .btn-danger {
+    background: transparent; color: #d32f2f;
+    &:hover:not(:disabled) { background: #fde8e8; }
+  }
+  .btn-icon {
+    padding: 0; width: 28px; height: 28px; border-radius: 6px;
+    background: transparent; color: var(--text-muted);
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; cursor: pointer; transition: background 120ms, color 120ms;
+    &:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+    &:disabled { opacity: .4; cursor: not-allowed; }
+  }
+
+  /* ── Form fields ─────────────────────────────────────────── */
+  .field-label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--text-secondary); margin-bottom: 4px;
+  }
+  .field-input {
+    width: 100%; padding: 7px 10px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    font-family: inherit; font-size: 14px; color: var(--text-primary);
+    transition: border-color 120ms;
+    &::placeholder { color: var(--text-muted); }
+    &:focus { outline: none; border-color: var(--accent-color); }
+  }
+  .field-textarea { @extend .field-input; resize: vertical; min-height: 72px; }
+  .field-select {
+    @extend .field-input;
+    appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%239aa0a6'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+  }
+
+  /* ── Cards ───────────────────────────────────────────────── */
+  .card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+  }
+
+  /* ── Flow chips ──────────────────────────────────────────── */
+  .flow-chip {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .3px; text-transform: uppercase;
+    cursor: pointer; transition: filter 150ms;
+    user-select: none;
+    &:hover { filter: brightness(1.08); }
+    &.step-0  { background: #e3f2fd; color: #1565c0; }
+    &.step-1  { background: #fff3e0; color: #e65100; }
+    &.step-2  { background: #e8f5e9; color: #1b5e20; }
+    &.step-3  { background: #f3e5f5; color: #4a148c; }
+    &.step-4  { background: #fce4ec; color: #880e4f; }
+    &.step-final { background: #e8f5e9; color: #1b5e20; opacity: .8; cursor: default; }
+
+  }
+
+  /* ── Tabs (used in dialogs) ──────────────────────────────── */
+  .tab-bar {
+    display: flex; border-bottom: 1px solid var(--surface-border);
+    padding: 0 16px; gap: 2px;
+  }
+  .tab-btn {
+    padding: 8px 12px; font-size: 13px; font-weight: 500;
+    color: var(--text-secondary); background: transparent;
+    border: 0; border-bottom: 2px solid transparent;
+    cursor: pointer; transition: color 120ms, border-color 120ms;
+    margin-bottom: -1px;
+    &:hover { color: var(--text-primary); }
+    &.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+  }
+}
+
+/* ── CDK Overlay / Dialog ────────────────────────────────────── */
+.cdk-overlay-backdrop {
+  background: rgba(0,0,0,0);
+  transition: background 180ms;
+}
+.cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+  background: rgba(0,0,0,0.46);
+}
+.app-dialog-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── CDK Drag & Drop ─────────────────────────────────────────── */
+.cdk-drag-preview {
+  box-shadow: var(--shadow-md);
+  border-radius: 6px;
+  opacity: .92;
+}
+.cdk-drag-placeholder { opacity: .25; }
+.cdk-drag-animating { transition: transform 200ms cubic-bezier(.4,0,.2,1); }
+.cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(.4,0,.2,1);
+}
