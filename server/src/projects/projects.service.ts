@@ -193,8 +193,28 @@ export class ProjectsService {
     const newOwner = this.db.prepare('SELECT 1 FROM users WHERE id = ?').get(newOwnerId);
     if (!newOwner) throw new BadRequestException('New owner not found');
 
-    this.db.prepare('UPDATE projects SET owner_id = ?, updated_at = unixepoch() WHERE id = ?')
-      .run(newOwnerId, id);
+    this.db.transaction(() => {
+      const oldOwnerId = project.owner_id;
+
+      // Demote old owner to a regular member (unless they're already a member)
+      const alreadyMember = this.db.prepare(
+        'SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?',
+      ).get(id, oldOwnerId);
+      if (!alreadyMember) {
+        this.db.prepare(
+          'INSERT INTO project_members (id, project_id, user_id, permissions) VALUES (?, ?, ?, ?)',
+        ).run(uuidv4(), id, oldOwnerId, '["view","create","complete"]');
+      }
+
+      // Remove new owner from members if they were one (they become owner instead)
+      this.db.prepare(
+        'DELETE FROM project_members WHERE project_id = ? AND user_id = ?',
+      ).run(id, newOwnerId);
+
+      this.db.prepare('UPDATE projects SET owner_id = ?, updated_at = unixepoch() WHERE id = ?')
+        .run(newOwnerId, id);
+    })();
+
     return this.findById(id, currentUserId, userRole);
   }
 
