@@ -1,5 +1,5 @@
 import {
-  Component, Input, Output, EventEmitter, OnInit, OnDestroy,
+  Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges,
   ElementRef, ViewChild, ChangeDetectorRef, NgZone, inject, signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -109,9 +109,10 @@ interface PopupState {
     .mention-empty { cursor: default; color: var(--text-muted); font-size: 12px; }
   `],
 })
-export class RichTextEditorComponent implements OnInit, OnDestroy {
+export class RichTextEditorComponent implements OnInit, OnChanges, OnDestroy {
   @Input() users: { id: string; name: string }[] = [];
   @Input() placeholder = 'Add a comment…';
+  @Input() content = '';
   @Output() htmlChange = new EventEmitter<string>();
 
   @ViewChild('editorEl', { static: true }) editorEl!: ElementRef<HTMLDivElement>;
@@ -128,6 +129,7 @@ export class RichTextEditorComponent implements OnInit, OnDestroy {
 
     this.editor = new Editor({
       element: this.editorEl.nativeElement,
+      content: this.content || '',
       extensions: [
         StarterKit,
         Placeholder.configure({ placeholder: this.placeholder }),
@@ -211,6 +213,16 @@ export class RichTextEditorComponent implements OnInit, OnDestroy {
         self.zone.run(() => self.htmlChange.emit(html));
       },
     });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['content'] && this.editor && !changes['content'].isFirstChange()) {
+      this.editor.commands.setContent(changes['content'].currentValue || '', false);
+    }
+  }
+
+  setContent(html: string): void {
+    this.editor?.commands.setContent(html, false);
   }
 
   pick(user: { id: string; name: string }) {
