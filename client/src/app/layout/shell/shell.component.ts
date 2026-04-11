@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
@@ -71,20 +71,34 @@ import { APP_VERSION } from '../../version';
               <div class="nav-section">Inboxes</div>
             }
 
-          @for (inbox of store.inboxes() ?? []; track inbox.id) {
+          @for (inbox of store.inboxes() ?? []; track inbox.id; let i = $index) {
+            @if (reorderInsertBefore() === inbox.id) {
+              <div class="reorder-line"></div>
+            }
             <div
               class="nav-drop-zone inbox-drop-zone"
+              [attr.data-inbox-id]="inbox.id"
               appDropZone
               [dzId]="'inbox-drop-' + inbox.id"
               [dzPredicate]="canDropInSidebar"
               (dzDrop)="onInboxDrop($event, inbox)"
-              [class.drop-active]="dragState.isDragging() && inbox.id !== dragState.currentProjectId()"
+              [class.drop-active]="dragState.isDragging() && !reorderActiveId() && inbox.id !== dragState.currentProjectId()"
+              [class.reorder-ghost]="reorderActiveId() === inbox.id"
             >
               <a
                 class="nav-item inbox-nav-item"
                 [routerLink]="['/projects', inbox.id]"
                 routerLinkActive="nav-active"
+                [style.background]="getRowHighlight(inbox)"
               >
+                <!-- Drag-to-reorder grip -->
+                <span
+                  class="inbox-grip"
+                  (pointerdown)="startReorder($event, inbox, i)"
+                  title="Drag to reorder"
+                >
+                  <span class="material-icons" style="font-size:13px">drag_indicator</span>
+                </span>
                 <span
                   class="inbox-dot"
                   [style.background]="inbox.color || 'var(--accent-color)'"
@@ -93,6 +107,13 @@ import { APP_VERSION } from '../../version';
                   {{ inbox.emoji || inbox.name[0].toUpperCase() }}
                 </span>
                 <span class="nav-label truncate">{{ inbox.name }}</span>
+                <!-- Task count badge -->
+                @if (inbox.user_pref?.show_task_count) {
+                  @let cnt = inbox.user_pref.count_mode === 'new' ? inbox.new_task_count : inbox.all_task_count;
+                  @if (cnt > 0) {
+                    <span class="inbox-count-badge">{{ cnt > 99 ? '99+' : cnt }}</span>
+                  }
+                }
                 <!-- Per-project notification settings trigger -->
                 <button
                   class="notif-settings-btn"
@@ -103,6 +124,9 @@ import { APP_VERSION } from '../../version';
                 </button>
               </a>
             </div>
+          }
+          @if (reorderActiveId() && reorderInsertBefore() === null) {
+            <div class="reorder-line"></div>
           }
 
           <button id="tour-new-inbox" class="nav-item nav-new" (click)="openNewInbox()">
@@ -516,7 +540,6 @@ import { APP_VERSION } from '../../version';
         &:hover {
           background: var(--surface-hover);
           color: var(--text-primary);
-          .notif-settings-btn { opacity: 1; }
         }
         &.nav-active {
           background: color-mix(in srgb, var(--accent-color) 13%, transparent);
@@ -537,8 +560,37 @@ import { APP_VERSION } from '../../version';
         border-radius: 4px; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         color: var(--text-muted); flex-shrink: 0;
-        margin-left: auto;
         &:hover { color: var(--accent-color); background: var(--surface-hover); }
+      }
+
+      /* Drag-to-reorder grip */
+      .inbox-grip {
+        opacity: 0;
+        transition: opacity 100ms;
+        cursor: grab;
+        display: flex; align-items: center; justify-content: center;
+        width: 14px; flex-shrink: 0; color: var(--text-muted);
+        touch-action: none; -webkit-user-drag: none;
+        margin-right: -2px;
+      }
+      .nav-item:hover .inbox-grip { opacity: 1; }
+      .nav-item:hover .notif-settings-btn { opacity: 1; }
+      .reorder-ghost { opacity: 0.35; pointer-events: none; }
+      .reorder-line {
+        height: 2px; margin: 0 8px;
+        background: var(--accent-color);
+        border-radius: 1px;
+        pointer-events: none;
+      }
+
+      /* Task count badge */
+      .inbox-count-badge {
+        flex-shrink: 0;
+        min-width: 16px; height: 16px;
+        background: #e53935; color: #fff;
+        border-radius: 8px; font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 4px; line-height: 1;
       }
 
       .nav-icon {
@@ -937,9 +989,17 @@ export class ShellComponent implements OnInit, OnDestroy {
   private dialog   = inject(Dialog);
   private settings = inject(SettingsService);
   private router   = inject(Router);
+  private ngZone   = inject(NgZone);
 
   // Notification panel
   notifPanelOpen = signal(false);
+
+  // ── Sidebar inbox reorder ─────────────────────────────────────────────────
+  reorderActiveId    = signal<string | null>(null);
+  reorderInsertBefore = signal<string | null>(null); // null = append at end
+  private reorderFromIndex = -1;
+  private boundReorderMove = this.onReorderMove.bind(this);
+  private boundReorderUp   = this.onReorderUp.bind(this);
 
   // Per-project notification settings popover
   projNotifOpen     = signal(false);
@@ -959,7 +1019,12 @@ export class ShellComponent implements OnInit, OnDestroy {
   private reminderSub?: Subscription;
 
   ngOnInit(): void {
-    this.api.get<any[]>('/projects').subscribe((list) => this.store.set(list));
+    this.api.get<any[]>('/projects').subscribe((list) => {
+      this.store.set(list);
+      this.api.get<{ projectIds: string[] }>('/projects/order').subscribe(({ projectIds }) => {
+        this.store.applyOrder(projectIds);
+      });
+    });
     this.settings.load();
     this.prioritySvc.load();
     this.notifSvc.init();
@@ -977,6 +1042,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.notifSvc.destroy();
     this.reminderSub?.unsubscribe();
+    document.removeEventListener('pointermove', this.boundReorderMove);
+    document.removeEventListener('pointerup', this.boundReorderUp);
   }
 
   // ── Notification panel ────────────────────────────────────────────────────
@@ -1205,6 +1272,77 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.api.patch<any>(`/todos/${todo.id}/move`, { toInbox: true }).subscribe(() => {
       this.dragState.movedTodoId.set(todo.id);
       this.toast.show(`Moved "${todo.title}" to My Inbox`);
+    });
+  }
+
+  // ── Row highlight helper ──────────────────────────────────────────────────
+
+  getRowHighlight(inbox: any): string | null {
+    const pref = inbox.user_pref;
+    if (!pref?.highlight_color) return null;
+    const count = pref.count_mode === 'new' ? inbox.new_task_count : inbox.all_task_count;
+    if (!count) return null;
+    // 6-digit hex → append 2-digit alpha for ~18% opacity
+    return `${pref.highlight_color}2e`;
+  }
+
+  // ── Inbox sidebar drag-to-reorder ─────────────────────────────────────────
+
+  startReorder(event: PointerEvent, inbox: any, index: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.reorderActiveId.set(inbox.id);
+    this.reorderFromIndex = index;
+    this.reorderInsertBefore.set(null);
+    document.addEventListener('pointermove', this.boundReorderMove, { passive: false });
+    document.addEventListener('pointerup', this.boundReorderUp);
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  }
+
+  private onReorderMove(event: PointerEvent): void {
+    event.preventDefault();
+    const items = Array.from(document.querySelectorAll('[data-inbox-id]')) as HTMLElement[];
+    let insertBefore: string | null = null;
+    for (const el of items) {
+      const rect = el.getBoundingClientRect();
+      if (event.clientY < rect.top + rect.height / 2) {
+        insertBefore = el.getAttribute('data-inbox-id');
+        break;
+      }
+    }
+    this.ngZone.run(() => this.reorderInsertBefore.set(insertBefore));
+  }
+
+  private onReorderUp(_event: PointerEvent): void {
+    document.removeEventListener('pointermove', this.boundReorderMove);
+    document.removeEventListener('pointerup', this.boundReorderUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+
+    this.ngZone.run(() => {
+      const activeId    = this.reorderActiveId();
+      const insertBefore = this.reorderInsertBefore();
+      const inboxes     = this.store.inboxes() ?? [];
+
+      const fromIndex = inboxes.findIndex((p) => p.id === activeId);
+      let toIndex: number;
+
+      if (insertBefore === null) {
+        toIndex = inboxes.length - 1;
+      } else {
+        const rawTo = inboxes.findIndex((p) => p.id === insertBefore);
+        toIndex = fromIndex < rawTo ? rawTo - 1 : rawTo;
+      }
+
+      this.reorderActiveId.set(null);
+      this.reorderInsertBefore.set(null);
+
+      if (fromIndex < 0 || fromIndex === toIndex) return;
+
+      this.store.reorder(fromIndex, toIndex);
+      const newOrder = (this.store.inboxes() ?? []).map((p) => p.id);
+      this.api.patch('/projects/order', { projectIds: newOrder }).subscribe();
     });
   }
 

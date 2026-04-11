@@ -11,6 +11,32 @@ export class InboxStoreService {
 
   set(list: any[]): void { this.inboxes.set(list); }
 
+  /** Reorder the list to match a stored order of project IDs. Unknown IDs are appended at end. */
+  applyOrder(ids: string[]): void {
+    if (!ids.length) return;
+    this.inboxes.update((list) => {
+      if (!list) return list;
+      const map = new Map(list.map((p) => [p.id, p]));
+      const ordered: any[] = [];
+      for (const id of ids) {
+        if (map.has(id)) { ordered.push(map.get(id)!); map.delete(id); }
+      }
+      for (const item of map.values()) ordered.push(item);
+      return ordered;
+    });
+  }
+
+  /** Move item at fromIndex to toIndex. */
+  reorder(fromIndex: number, toIndex: number): void {
+    this.inboxes.update((list) => {
+      if (!list) return list;
+      const arr = [...list];
+      const [item] = arr.splice(fromIndex, 1);
+      arr.splice(toIndex, 0, item);
+      return arr;
+    });
+  }
+
   add(inbox: any): void { this.inboxes.update((l) => [inbox, ...(l ?? [])]); }
 
   update(inbox: any): void {

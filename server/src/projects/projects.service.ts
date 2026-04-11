@@ -49,29 +49,51 @@ export class ProjectsService {
     return [];
   }
 
-  private memberCountsSubquery = `
-    (1 + (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id IS NOT NULL)) as user_count,
-    (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.team_id IS NOT NULL) as team_count
-  `;
+  private parseWithPrefs(row: any) {
+    const { pref_show_count, pref_count_mode, pref_highlight, new_task_count, all_task_count, ...rest } = row;
+    return {
+      ...this.parse(rest),
+      new_task_count: new_task_count ?? 0,
+      all_task_count: all_task_count ?? 0,
+      user_pref: {
+        show_task_count: !!pref_show_count,
+        count_mode: pref_count_mode ?? 'new',
+        highlight_color: pref_highlight ?? null,
+      },
+    };
+  }
 
   findAll(userId: string, userRole: string) {
+    const prefJoin = `LEFT JOIN user_project_prefs upr ON upr.project_id = p.id AND upr.user_id = ?`;
+    const prefCols = `
+      COALESCE(upr.show_task_count, 0) as pref_show_count,
+      COALESCE(upr.count_mode, 'new') as pref_count_mode,
+      upr.highlight_color as pref_highlight,
+      (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL AND t.flow_step_index = 0) as new_task_count,
+      (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL) as all_task_count
+    `;
+
     if (userRole === 'admin') {
       return this.db.prepare(`
         SELECT p.*, u.name as owner_name,
           (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL) as todo_count,
           (1 + (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id IS NOT NULL)) as user_count,
-          (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.team_id IS NOT NULL) as team_count
+          (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.team_id IS NOT NULL) as team_count,
+          ${prefCols}
         FROM projects p JOIN users u ON u.id = p.owner_id
+        ${prefJoin}
         ORDER BY p.updated_at DESC
-      `).all().map(this.parse);
+      `).all(userId).map((r) => this.parseWithPrefs(r));
     }
 
     return this.db.prepare(`
       SELECT DISTINCT p.*, u.name as owner_name,
         (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL) as todo_count,
         (1 + (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id IS NOT NULL)) as user_count,
-        (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.team_id IS NOT NULL) as team_count
+        (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.team_id IS NOT NULL) as team_count,
+        ${prefCols}
       FROM projects p JOIN users u ON u.id = p.owner_id
+      ${prefJoin}
       WHERE p.owner_id = ?
         OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = ?)
         OR EXISTS (
@@ -80,7 +102,7 @@ export class ProjectsService {
           WHERE pm.project_id = p.id AND tm.user_id = ?
         )
       ORDER BY p.updated_at DESC
-    `).all(userId, userId, userId).map(this.parse);
+    `).all(userId, userId, userId, userId).map((r) => this.parseWithPrefs(r));
   }
 
   findById(id: string, userId: string, userRole: string) {
@@ -88,10 +110,17 @@ export class ProjectsService {
       throw new ForbiddenException();
     }
     const project = this.db.prepare(`
-      SELECT p.*, u.name as owner_name
-      FROM projects p JOIN users u ON u.id = p.owner_id
+      SELECT p.*, u.name as owner_name,
+        (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL AND t.flow_step_index = 0) as new_task_count,
+        (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL) as all_task_count,
+        COALESCE(upr.show_task_count, 0) as pref_show_count,
+        COALESCE(upr.count_mode, 'new') as pref_count_mode,
+        upr.highlight_color as pref_highlight
+      FROM projects p
+      JOIN users u ON u.id = p.owner_id
+      LEFT JOIN user_project_prefs upr ON upr.project_id = p.id AND upr.user_id = ?
       WHERE p.id = ?
-    `).get(id) as any;
+    `).get(userId, id) as any;
     if (!project) throw new NotFoundException();
 
     const members = this.db.prepare(`
@@ -102,8 +131,17 @@ export class ProjectsService {
       WHERE pm.project_id = ?
     `).all(id).map((m: any) => ({ ...m, permissions: JSON.parse(m.permissions) }));
 
+    const { pref_show_count, pref_count_mode, pref_highlight, new_task_count, all_task_count, ...projectRest } = project;
+
     return {
-      ...this.parse(project),
+      ...this.parse(projectRest),
+      new_task_count: new_task_count ?? 0,
+      all_task_count: all_task_count ?? 0,
+      user_pref: {
+        show_task_count: !!pref_show_count,
+        count_mode: pref_count_mode ?? 'new',
+        highlight_color: pref_highlight ?? null,
+      },
       members,
       myPermissions: this.getUserPermissions(id, userId),
     };
@@ -286,6 +324,61 @@ export class ProjectsService {
     if (!project) throw new NotFoundException();
     if (userRole !== 'admin' && project.owner_id !== userId) throw new ForbiddenException();
     this.db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  }
+
+  // ── Sidebar order ────────────────────────────────────────────────────────────
+
+  getOrder(userId: string): string[] {
+    const row = this.db.prepare(
+      'SELECT project_ids FROM user_project_order WHERE user_id = ?',
+    ).get(userId) as any;
+    return row ? JSON.parse(row.project_ids) : [];
+  }
+
+  saveOrder(userId: string, projectIds: string[]): void {
+    this.db.prepare(`
+      INSERT INTO user_project_order (user_id, project_ids, updated_at)
+      VALUES (?, ?, unixepoch())
+      ON CONFLICT(user_id) DO UPDATE SET
+        project_ids = excluded.project_ids,
+        updated_at = unixepoch()
+    `).run(userId, JSON.stringify(projectIds));
+  }
+
+  // ── Per-user per-inbox display prefs ─────────────────────────────────────────
+
+  getPrefs(userId: string, projectId: string): any {
+    const row = this.db.prepare(
+      'SELECT * FROM user_project_prefs WHERE user_id = ? AND project_id = ?',
+    ).get(userId, projectId) as any;
+    if (!row) return { show_task_count: false, count_mode: 'new', highlight_color: null };
+    return {
+      show_task_count: !!row.show_task_count,
+      count_mode: row.count_mode ?? 'new',
+      highlight_color: row.highlight_color ?? null,
+    };
+  }
+
+  updatePrefs(
+    userId: string,
+    projectId: string,
+    dto: { show_task_count?: boolean; count_mode?: string; highlight_color?: string | null },
+  ): any {
+    const existing = this.getPrefs(userId, projectId);
+    const show = dto.show_task_count !== undefined ? dto.show_task_count : existing.show_task_count;
+    const mode = dto.count_mode !== undefined ? dto.count_mode : existing.count_mode;
+    const color = dto.highlight_color !== undefined ? dto.highlight_color : existing.highlight_color;
+
+    this.db.prepare(`
+      INSERT INTO user_project_prefs (user_id, project_id, show_task_count, count_mode, highlight_color)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, project_id) DO UPDATE SET
+        show_task_count = excluded.show_task_count,
+        count_mode = excluded.count_mode,
+        highlight_color = excluded.highlight_color
+    `).run(userId, projectId, show ? 1 : 0, mode, color ?? null);
+
+    return this.getPrefs(userId, projectId);
   }
 
   private parse(row: any) {

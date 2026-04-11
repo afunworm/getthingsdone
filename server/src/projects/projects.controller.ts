@@ -15,6 +15,21 @@ export class ProjectsController {
     return this.projectsService.findAll(user.id, user.role);
   }
 
+  // ── Order (must be before :id routes) ──────────────────────────────────────
+
+  @Get('order')
+  getOrder(@CurrentUser() user: any) {
+    return { projectIds: this.projectsService.getOrder(user.id) };
+  }
+
+  @Patch('order')
+  saveOrder(@Body('projectIds') projectIds: string[], @CurrentUser() user: any) {
+    this.projectsService.saveOrder(user.id, projectIds ?? []);
+    return { projectIds: projectIds ?? [] };
+  }
+
+  // ── Project CRUD ────────────────────────────────────────────────────────────
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.projectsService.findById(id, user.id, user.role);
@@ -72,6 +87,24 @@ export class ProjectsController {
   ) {
     return this.projectsService.removeMember(projectId, memberId, user.id, user.role);
   }
+
+  // ── Display prefs ───────────────────────────────────────────────────────────
+
+  @Get(':id/prefs')
+  getPrefs(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.projectsService.getPrefs(user.id, id);
+  }
+
+  @Patch(':id/prefs')
+  updatePrefs(
+    @Param('id') id: string,
+    @Body() dto: { show_task_count?: boolean; count_mode?: string; highlight_color?: string | null },
+    @CurrentUser() user: any,
+  ) {
+    return this.projectsService.updatePrefs(user.id, id, dto);
+  }
+
+  // ── Delete ──────────────────────────────────────────────────────────────────
 
   @Delete(':id')
   @HttpCode(204)
