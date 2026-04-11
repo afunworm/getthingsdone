@@ -1122,7 +1122,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   postponeCustom(id: string, dateStr: string): void {
     if (!dateStr) return;
-    const newDue = Math.floor(new Date(dateStr).getTime() / 1000);
+    const newDue = Math.floor(new Date(dateStr + 'T00:00:00').getTime() / 1000);
     this.api.patch(`/todos/${id}`, { dueDate: newDue }).subscribe();
     this.overdueItems.update((list) => list.filter((t) => t.id !== id));
     this.postponeOpenId.set(null);

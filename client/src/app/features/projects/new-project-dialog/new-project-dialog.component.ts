@@ -344,7 +344,7 @@ export class NewProjectDialogComponent implements OnInit {
       this.form.color = p.color ?? '#6366f1';
       this.form.emoji = p.emoji ?? '';
       this.form.dueDateStr = p.due_date
-        ? new Date(p.due_date * 1000).toISOString().slice(0, 10)
+        ? new Date(p.due_date * 1000).toLocaleDateString('en-CA')
         : '';
       this.form.flowTemplateId = p.flow_template_id ?? '';
       this.currentMembers.set(p.members ?? []);
@@ -425,7 +425,7 @@ export class NewProjectDialogComponent implements OnInit {
       color: this.form.color,
       emoji: this.form.emoji || null,
       dueDate: this.form.dueDateStr
-        ? Math.floor(new Date(this.form.dueDateStr).getTime() / 1000)
+        ? Math.floor(new Date(this.form.dueDateStr + 'T00:00:00').getTime() / 1000)
         : null,
     };
 

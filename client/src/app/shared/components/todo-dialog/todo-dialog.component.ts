@@ -1218,7 +1218,7 @@ export class TodoDialogComponent implements OnInit {
         this.api.get<any[]>(`/projects/${this.todo.project_id}/users`).subscribe((u) => this.accessibleUsers.set(u));
       }
       const dd = this.todo.due_date
-        ? new Date(this.todo.due_date * 1000).toISOString().slice(0, 10)
+        ? new Date(this.todo.due_date * 1000).toLocaleDateString('en-CA')
         : '';
       const rr = !!this.todo.is_recurring;
       const ri = this.todo.recurrence_rule?.interval ?? 1;
@@ -1302,7 +1302,7 @@ export class TodoDialogComponent implements OnInit {
   // ── Schedule editing ──────────────────────────────────
   saveSchedule(): void {
     const dueDate = this.schedDueDate()
-      ? Math.floor(new Date(this.schedDueDate()).getTime() / 1000)
+      ? Math.floor(new Date(this.schedDueDate() + 'T00:00:00').getTime() / 1000)
       : null;
     const recurrenceRule = this.schedRecurring()
       ? { interval: this.schedInterval(), type: this.schedType() }
@@ -1586,7 +1586,7 @@ subNextStepLabel(sub: any): string {
       title: this.form.title.trim(),
       description: this.form.description || undefined,
       dueDate: this.form.dueDateStr
-        ? Math.floor(new Date(this.form.dueDateStr).getTime() / 1000)
+        ? Math.floor(new Date(this.form.dueDateStr + 'T00:00:00').getTime() / 1000)
         : undefined,
       isRecurring: this.form.isRecurring,
       recurrenceRule: this.form.isRecurring

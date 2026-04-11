@@ -800,7 +800,7 @@ export class TodoItemComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['todo'] && !this.schedOpen()) {
       const t = changes['todo'].currentValue;
-      this.schDueDate   = t?.due_date ? new Date(t.due_date * 1000).toISOString().slice(0, 10) : '';
+      this.schDueDate   = t?.due_date ? new Date(t.due_date * 1000).toLocaleDateString('en-CA') : '';
       this.schRecurring = !!t?.is_recurring;
       this.schInterval  = t?.recurrence_rule?.interval ?? 1;
       this.schType      = t?.recurrence_rule?.type ?? 'weekly';
@@ -820,7 +820,7 @@ export class TodoItemComponent implements OnChanges {
     this.reminderOpen.set(false);
     if (!this.schedOpen()) {
       this.schDueDate   = this.todo.due_date
-        ? new Date(this.todo.due_date * 1000).toISOString().slice(0, 10) : '';
+        ? new Date(this.todo.due_date * 1000).toLocaleDateString('en-CA') : '';
       this.schRecurring = !!this.todo.is_recurring;
       this.schInterval  = this.todo.recurrence_rule?.interval ?? 1;
       this.schType      = this.todo.recurrence_rule?.type ?? 'weekly';
@@ -836,7 +836,7 @@ export class TodoItemComponent implements OnChanges {
 
   saveSchedule(): void {
     const dueDate = this.schDueDate
-      ? Math.floor(new Date(this.schDueDate).getTime() / 1000) : null;
+      ? Math.floor(new Date(this.schDueDate + 'T00:00:00').getTime() / 1000) : null;
     const recurrenceRule = this.schRecurring
       ? { interval: this.schInterval, type: this.schType } : null;
     this.api.patch<any>(`/todos/${this.todo.id}`, {
