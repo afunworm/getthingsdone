@@ -7,8 +7,9 @@ COPY client/ ./
 RUN npm run build -- --configuration production
 
 # ── Stage 2: Build NestJS server ──────────────────────────────────────────────
-FROM node:22-alpine AS server-build
+FROM node:22-slim AS server-build
 WORKDIR /build/server
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY server/package*.json ./
 RUN npm ci
 COPY server/ ./
