@@ -20,9 +20,11 @@ export class AuthController {
 
   @Get('callback')
   async callback(@Req() req: Request, @Res() res: Response) {
-    const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    const redirectUri = this.config.getOrThrow('POCKETID_REDIRECT_URI');
+    const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+    const fullUrl = `${redirectUri}${qs}`;
     const { accessToken } = await this.authService.handleCallback(fullUrl);
-    const frontendUrl = this.config.get('FRONTEND_URL', 'http://localhost:4200');
+    const frontendUrl = this.config.getOrThrow('FRONTEND_URL');
     res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
   }
 
