@@ -9,7 +9,10 @@ export class InboxService {
   findAll(userId: string) {
     return this.db.prepare(`
       SELECT t.*, u.name AS created_by_name,
-        (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count
+        (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count,
+        (SELECT COUNT(*) FROM todo_attachments WHERE todo_id = t.id) +
+        (SELECT COUNT(*) FROM attachments a JOIN comments c ON c.id = a.comment_id WHERE c.todo_id = t.id) as attachment_count,
+        (SELECT COUNT(*) FROM comments WHERE todo_id = t.id) as comment_count
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
       WHERE t.is_inbox = 1 AND t.inbox_user_id = ? AND t.parent_todo_id IS NULL

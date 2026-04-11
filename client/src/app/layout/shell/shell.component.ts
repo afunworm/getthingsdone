@@ -14,6 +14,8 @@ import { NotificationService, AppNotification } from '../../core/services/notifi
 import { PriorityService } from '../../core/services/priority.service';
 import { NewProjectDialogComponent } from '../../features/projects/new-project-dialog/new-project-dialog.component';
 import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-dialog.component';
+import { OnboardingService } from '../../core/services/onboarding.service';
+import { APP_VERSION } from '../../version';
 
 @Component({
   selector: 'app-shell',
@@ -28,7 +30,7 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
           <div class="logo-mark">✓</div>
           <div class="logo-name">
             <span class="logo-text">Get Things Done</span>
-            <span class="logo-by">by bryan</span>
+            <span class="logo-by"><span class="logo-version">{{ version }}</span> by bryan</span>
           </div>
           <!-- Notification Bell -->
           <div class="bell-wrap">
@@ -44,7 +46,7 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
         <!-- Nav -->
         <nav class="sidebar-nav">
           <!-- All Inboxes overview -->
-          <a class="nav-item" routerLink="/all-inboxes" routerLinkActive="nav-active">
+          <a id="tour-all-inboxes" class="nav-item" routerLink="/all-inboxes" routerLinkActive="nav-active">
             <span class="material-icons nav-icon">all_inbox</span>
             <span>All Inboxes</span>
           </a>
@@ -58,15 +60,16 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
             (dzDrop)="onMyInboxDrop($event)"
             [class.drop-active]="dragState.isDragging() && dragState.currentProjectId() !== 'inbox'"
           >
-            <a class="nav-item" routerLink="/inbox" routerLinkActive="nav-active">
+            <a id="tour-my-inbox" class="nav-item" routerLink="/inbox" routerLinkActive="nav-active">
               <span class="material-icons nav-icon">inbox</span>
               <span>My Inbox</span>
             </a>
           </div>
 
-          @if ((store.inboxes()?.length ?? 0) > 0) {
-            <div class="nav-section">Inboxes</div>
-          }
+          <div id="tour-inboxes-section">
+            @if ((store.inboxes()?.length ?? 0) > 0) {
+              <div class="nav-section">Inboxes</div>
+            }
 
           @for (inbox of store.inboxes() ?? []; track inbox.id) {
             <div
@@ -102,14 +105,15 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
             </div>
           }
 
-          <button class="nav-item nav-new" (click)="openNewInbox()">
+          <button id="tour-new-inbox" class="nav-item nav-new" (click)="openNewInbox()">
             <span class="material-icons nav-icon" style="font-size:14px">add</span>
             <span>New Inbox</span>
           </button>
+          </div><!-- /tour-inboxes-section -->
 
           <div class="nav-divider"></div>
 
-          <a class="nav-item" routerLink="/settings" routerLinkActive="nav-active">
+          <a id="tour-settings-link" class="nav-item" routerLink="/settings" routerLinkActive="nav-active">
             <span class="material-icons nav-icon">settings</span>
             <span>Settings</span>
           </a>
@@ -138,7 +142,7 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
       </aside>
 
       <!-- Main -->
-      <main class="main-content">
+      <main id="tour-main-content" class="main-content">
         <router-outlet />
       </main>
     </div>
@@ -438,6 +442,10 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
         color: var(--text-muted);
         line-height: 1;
       }
+      .logo-version {
+        opacity: 0.7;
+        margin-right: 2px;
+      }
 
       /* Bell */
       .bell-wrap { position: relative; flex-shrink: 0; }
@@ -464,7 +472,6 @@ import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-di
         padding: 0 3px;
         line-height: 1;
       }
-
       .sidebar-nav {
         flex: 1;
         overflow-y: auto;
@@ -923,7 +930,9 @@ export class ShellComponent implements OnInit, OnDestroy {
   prioritySvc  = inject(PriorityService);
   store     = inject(InboxStoreService);
   dragState = inject(DragStateService);
-  notifSvc  = inject(NotificationService);
+  notifSvc      = inject(NotificationService);
+  onboardingSvc = inject(OnboardingService);
+  readonly version = APP_VERSION;
   private api      = inject(ApiService);
   private dialog   = inject(Dialog);
   private settings = inject(SettingsService);
@@ -954,6 +963,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.settings.load();
     this.prioritySvc.load();
     this.notifSvc.init();
+    this.onboardingSvc.init();
     this.reminderSub = this.notifSvc.refresh$.subscribe((payload) => {
       if (payload.type === 'task_reminder') {
         this.reminderQueue.update((q) => [...q, payload]);

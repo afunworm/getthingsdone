@@ -1,6 +1,11 @@
 import {
   Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, HttpCode,
+  UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { TodosService } from './todos.service';
@@ -112,5 +117,31 @@ export class TodosController {
   @HttpCode(204)
   delete(@Param('id') id: string, @CurrentUser() user: any) {
     return this.todosService.delete(id, user.id, user.role);
+  }
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+
+  @Post(':id/attachments')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads'),
+        filename: (_req, file, cb) => cb(null, `${uuidv4()}${extname(file.originalname)}`),
+      }),
+      limits: { fileSize: 25 * 1024 * 1024 },
+    }),
+  )
+  uploadAttachment(
+    @Param('id') todoId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    return this.todosService.addTodoAttachment(todoId, file, user.id);
+  }
+
+  @Delete('attachments/:id')
+  @HttpCode(204)
+  deleteAttachment(@Param('id') id: string, @CurrentUser() user: any) {
+    this.todosService.deleteTodoAttachment(id, user.id, user.role);
   }
 }

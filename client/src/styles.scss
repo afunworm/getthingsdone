@@ -1,4 +1,5 @@
 @use 'styles/variables';
+@import 'driver.js/dist/driver.css';
 
 @tailwind base;
 @tailwind components;
@@ -143,6 +144,125 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ── Tour task-list visibility control ───────────────────────── */
+body.tour-hide-tasks #tour-task-list-wrap { opacity: 0 !important; pointer-events: none !important; }
+
+/* ── Driver.js tour overrides ────────────────────────────────── */
+.driver-popover {
+  background: var(--surface-card) !important;
+  border: 1px solid var(--surface-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.25) !important;
+  padding: 20px !important;
+  min-width: 280px !important;
+  max-width: 340px !important;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif !important;
+}
+.driver-popover-title {
+  color: var(--text-primary) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  margin-bottom: 6px !important;
+}
+.driver-popover-description {
+  color: var(--text-secondary) !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+.driver-popover-progress-text {
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+}
+.driver-popover-progress-text {
+  font-size: 11px !important;
+  color: var(--text-muted) !important;
+  text-align: right !important;
+  margin: 10px 0 0 !important;
+  display: block !important;
+}
+.driver-popover-navigation-btns {
+  margin-top: 10px !important;
+  gap: 6px !important;
+}
+.driver-popover-prev-btn {
+  display: inline-flex !important; align-items: center !important;
+  padding: 5px 12px !important; border: 0 !important; border-radius: 6px !important;
+  font-family: inherit !important; font-size: 13px !important; font-weight: 500 !important;
+  cursor: pointer !important; transition: opacity 120ms, background 120ms !important;
+  white-space: nowrap !important;
+  background: var(--surface-hover) !important;
+  color: var(--text-secondary) !important;
+  &:hover { opacity: 0.88 !important; }
+  &:focus { outline: none !important; }
+}
+.driver-popover-next-btn {
+  display: inline-flex !important; align-items: center !important;
+  padding: 5px 12px !important; border: 0 !important; border-radius: 6px !important;
+  font-family: inherit !important; font-size: 13px !important; font-weight: 500 !important;
+  cursor: pointer !important; transition: opacity 120ms, background 120ms !important;
+  white-space: nowrap !important;
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  text-shadow: none !important;
+  &:hover { opacity: 0.88 !important; color: #fff !important; background: var(--accent-color) !important; text-shadow: none !important; }
+  &:focus { outline: none !important; }
+}
+.driver-confirm-overlay {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 14px !important;
+  padding: 8px 0 !important;
+}
+.driver-confirm-msg {
+  margin: 0 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+}
+.driver-confirm-actions {
+  display: flex !important;
+  gap: 8px !important;
+}
+.driver-confirm-end {
+  display: inline-flex !important; align-items: center !important;
+  padding: 5px 14px !important; border: 0 !important; border-radius: 6px !important;
+  font-family: inherit !important; font-size: 13px !important; font-weight: 500 !important;
+  cursor: pointer !important;
+  background: var(--surface-hover) !important;
+  color: var(--text-secondary) !important;
+  &:hover { color: var(--text-primary) !important; }
+}
+.driver-confirm-keep {
+  display: inline-flex !important; align-items: center !important;
+  padding: 5px 14px !important; border: 0 !important; border-radius: 6px !important;
+  font-family: inherit !important; font-size: 13px !important; font-weight: 500 !important;
+  cursor: pointer !important;
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  &:hover { opacity: 0.88 !important; }
+}
+.driver-popover-close-btn { display: none !important; }
+.tour-close-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: transparent;
+  border: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  &:hover { color: var(--text-primary); background: var(--surface-hover); }
+}
+.driver-popover-arrow-side-left.driver-popover-arrow { border-right-color: var(--surface-card) !important; }
+.driver-popover-arrow-side-right.driver-popover-arrow { border-left-color: var(--surface-card) !important; }
+.driver-popover-arrow-side-top.driver-popover-arrow { border-bottom-color: var(--surface-card) !important; }
+.driver-popover-arrow-side-bottom.driver-popover-arrow { border-top-color: var(--surface-card) !important; }
 
 /* ── CDK Drag & Drop ─────────────────────────────────────────── */
 .cdk-drag-preview {

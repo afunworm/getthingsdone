@@ -12,7 +12,7 @@ import { SubtaskDroppedEvent } from '../../shared/components/todo-item/todo-item
 import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-dialog.component';
 import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE } from '../../shared/components/filter-bar/filter-bar.component';
 import { PriorityService } from '../../core/services/priority.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 
 const INBOX_STEPS = [
   { label: 'New',         color: '#1565c0', bg: '#e3f2fd' },
@@ -52,14 +52,16 @@ const INBOX_STEPS = [
       </div>
 
       <!-- Filter & sort bar -->
-      <app-filter-bar
-        settingsKey="inbox"
-        [userId]="auth.user()?.id ?? ''"
-        (stateChange)="filterState.set($event)"
-      />
+      <div id="tour-filter-bar">
+        <app-filter-bar
+          settingsKey="inbox"
+          [userId]="auth.user()?.id ?? ''"
+          (stateChange)="filterState.set($event)"
+        />
+      </div>
 
       <!-- Assignment + Priority filters -->
-      <div class="seg-row">
+      <div id="tour-seg-filters" class="seg-row">
         <div class="pri-seg">
           <button class="pri-seg-btn" [class.active]="filterMine()" (click)="toggleAssignment('mine')">
             <span class="material-icons" style="font-size:10px">person</span>Me
@@ -87,7 +89,7 @@ const INBOX_STEPS = [
       </div>
 
       <!-- Step filter chips -->
-      <div class="step-chips">
+      <div id="tour-step-chips" class="step-chips">
         <button class="step-chip" [class.active]="filterSteps().length === 0" (click)="filterSteps.set([])">
           All ({{ todos().length }})
         </button>
@@ -114,7 +116,8 @@ const INBOX_STEPS = [
       </div>
 
       <!-- Task list -->
-      <app-task-list
+      <div id="tour-task-list-wrap">
+        <app-task-list
         listId="project-main-inbox"
         [todos]="visibleTodos()"
         [sidebarIds]="sidebarDropIds"
@@ -132,6 +135,7 @@ const INBOX_STEPS = [
         (subtaskCreated)="onSubtaskCreated($event)"
         (promoted)="onPromoted($event)"
       />
+      </div><!-- /tour-task-list-wrap -->
     </div>
   `,
   styles: [`
@@ -197,6 +201,17 @@ const INBOX_STEPS = [
       &::placeholder { color: var(--text-muted); }
     }
 
+    /* Tour animation */
+    #tour-task-list-wrap { transition: opacity 150ms; }
+    #tour-task-list-wrap.tour-tasks-hidden { opacity: 0; pointer-events: none; }
+    #tour-task-list-wrap.tour-tasks-animate-in {
+      animation: tourTasksIn 450ms cubic-bezier(.22,1,.36,1) forwards;
+    }
+    @keyframes tourTasksIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
     .hide-done-btn {
       display: flex; align-items: center; gap: 4px;
       padding: 4px 10px; border-radius: 20px;
@@ -233,6 +248,7 @@ export class InboxComponent implements OnInit, OnDestroy {
   visibleTodos     = signal<any[]>([]);
   userTeamIds      = signal<string[]>([]);
   quickTitle = '';
+  private reloadSub?: Subscription;
 
   get sidebarDropIds(): string[] {
     return (this.store.inboxes() ?? []).map((i) => `inbox-drop-${i.id}`);
@@ -321,11 +337,13 @@ export class InboxComponent implements OnInit, OnDestroy {
     this.api.get<{ id: string }[]>('/teams/mine').subscribe((teams) =>
       this.userTeamIds.set(teams.map((t) => t.id)),
     );
+    this.reloadSub = this.store.reload$.subscribe(() => this.load());
   }
 
   ngOnDestroy(): void {
     this.dragState.currentProjectId.set(null);
     this.dragState.isDragging.set(false);
+    this.reloadSub?.unsubscribe();
   }
 
   toggleHideDone(): void {

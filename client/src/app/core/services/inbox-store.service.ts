@@ -1,8 +1,13 @@
 import { Injectable, signal } from '@angular/core';
+import { Subject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class InboxStoreService {
   inboxes = signal<any[] | null>(null);
+
+  /** Emit to force the inbox component to re-fetch its task list. */
+  readonly reload$ = new Subject<void>();
+  triggerReload(): void { this.reload$.next(); }
 
   set(list: any[]): void { this.inboxes.set(list); }
 

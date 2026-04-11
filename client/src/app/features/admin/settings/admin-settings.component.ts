@@ -102,6 +102,31 @@ const TIMEZONES = Intl.supportedValuesOf('timeZone');
       </div>
 
       <div class="section">
+        <h3>File Uploads</h3>
+        <div class="card">
+          <div class="card-row" style="align-items:flex-start">
+            <div class="row-info">
+              <div class="row-label">Allowed extensions</div>
+              <div class="row-desc">Comma-separated list of permitted file extensions (without dots). Users will be blocked from uploading anything not on this list.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">
+              <input class="label-input" style="width:240px"
+                [(ngModel)]="allowedExtensions"
+                placeholder="jpg,png,pdf,zip…" />
+              <button class="btn-apply" (click)="saveAllowedExtensions()">
+                @if (extSaved()) {
+                  <span class="material-icons" style="font-size:14px">check</span>
+                  Saved
+                } @else {
+                  Save
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
         <h3>Priority Labels</h3>
         <div class="card">
           @for (lvl of [1,2,3]; track lvl) {
@@ -234,6 +259,10 @@ export class AdminSettingsComponent implements OnInit {
   copied       = signal(false);
   creatingToken = signal(false);
 
+  // File uploads
+  allowedExtensions = 'jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip,mp4,mov';
+  extSaved = signal(false);
+
   // Priority labels — editable copies of the signal values
   priLabels: Record<string, string> = { '1': 'Low', '2': 'Medium', '3': 'Urgent' };
   priSaved  = signal(false);
@@ -244,6 +273,7 @@ export class AdminSettingsComponent implements OnInit {
       if (s['priority_labels']) {
         try { this.priLabels = { ...JSON.parse(s['priority_labels']) }; } catch { /* keep defaults */ }
       }
+      if (s['allowed_upload_extensions']) this.allowedExtensions = s['allowed_upload_extensions'];
     });
     this.loadTokens();
   }
@@ -287,6 +317,14 @@ export class AdminSettingsComponent implements OnInit {
   saveTz(value: string): void {
     this.defaultTz = value;
     this.api.patch('/admin/settings', { key: 'default_timezone', value }).subscribe();
+  }
+
+  saveAllowedExtensions(): void {
+    const value = this.allowedExtensions.trim();
+    this.api.patch('/admin/settings', { key: 'allowed_upload_extensions', value }).subscribe(() => {
+      this.extSaved.set(true);
+      setTimeout(() => this.extSaved.set(false), 2000);
+    });
   }
 
   savePriorityLabels(): void {

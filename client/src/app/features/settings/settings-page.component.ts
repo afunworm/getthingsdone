@@ -5,6 +5,7 @@ import { NotificationService, NotificationSettings } from '../../core/services/n
 import { InboxStoreService } from '../../core/services/inbox-store.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ApiService } from '../../core/services/api.service';
+import { OnboardingService } from '../../core/services/onboarding.service';
 
 const TIMEZONES = Intl.supportedValuesOf('timeZone');
 
@@ -40,7 +41,9 @@ const EVENT_ROWS: SettingRow[] = [
         <!-- Sidebar nav -->
         <nav class="settings-nav">
           @for (tab of tabs; track tab.key) {
-            <button class="sn-item" [class.sn-active]="activeTab() === tab.key" (click)="activeTab.set(tab.key)">
+            <button class="sn-item" [class.sn-active]="activeTab() === tab.key"
+              [id]="'tour-' + tab.key + '-tab'"
+              (click)="activeTab.set(tab.key)">
               <span class="material-icons sn-icon">{{ tab.icon }}</span>
               {{ tab.label }}
             </button>
@@ -59,7 +62,7 @@ const EVENT_ROWS: SettingRow[] = [
 
             <div class="card">
               <div class="card-hdr">Regional</div>
-              <div class="general-row">
+              <div id="tour-timezone" class="general-row">
                 <div class="general-info">
                   <div class="general-label">Timezone</div>
                   <div class="general-desc">Used for daily reminder resets (upcoming, past-due). Defaults to the server's configured timezone.</div>
@@ -70,7 +73,7 @@ const EVENT_ROWS: SettingRow[] = [
                   }
                 </select>
               </div>
-              <div class="general-row">
+              <div id="tour-reminder" class="general-row">
                 <div class="general-info">
                   <div class="general-label">Daily overdue reminder time</div>
                   <div class="general-desc">Time of day to receive the consolidated overdue tasks digest (email + in-app).</div>
@@ -83,10 +86,25 @@ const EVENT_ROWS: SettingRow[] = [
                 />
               </div>
             </div>
+
+            <div class="card" style="margin-top:16px">
+              <div class="card-hdr">Onboarding</div>
+              <div class="general-row">
+                <div class="general-info">
+                  <div class="general-label">Feature tour</div>
+                  <div class="general-desc">Revisit the onboarding guide to learn about key features and update your preferences.</div>
+                </div>
+                <button id="tour-restart-btn" class="restart-tour-btn" (click)="onboarding.restart()">
+                  <span class="material-icons" style="font-size:15px">play_circle_outline</span>
+                  Restart tour
+                </button>
+              </div>
+            </div>
           }
 
           <!-- ── Notifications tab ─────────────────────────────────────── -->
           @if (activeTab() === 'notifications') {
+            <div id="tour-notifications">
             <div class="section-block">
               <h2 class="section-title">Notification preferences</h2>
               <p class="section-desc">
@@ -233,6 +251,7 @@ const EVENT_ROWS: SettingRow[] = [
                 </div>
               </div>
             }
+            </div><!-- /tour-notifications -->
           }
 
         </div>
@@ -415,12 +434,22 @@ const EVENT_ROWS: SettingRow[] = [
       font-family: inherit; margin-top: 4px; width: fit-content;
       &:hover { color: #e53935; border-color: #e53935; }
     }
+    .restart-tour-btn {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+      font-size: 13px; font-weight: 500; color: var(--accent-color);
+      background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+      cursor: pointer; padding: 7px 14px; border-radius: 7px;
+      font-family: inherit; transition: background 120ms;
+      &:hover { background: color-mix(in srgb, var(--accent-color) 18%, transparent); }
+    }
   `],
 })
 export class SettingsPageComponent implements OnInit {
   private notifSvc  = inject(NotificationService);
   private inboxStore = inject(InboxStoreService);
   private auth      = inject(AuthService);
+  onboarding        = inject(OnboardingService);
 
   tabs = [
     { key: 'general',       label: 'General',       icon: 'tune'          },

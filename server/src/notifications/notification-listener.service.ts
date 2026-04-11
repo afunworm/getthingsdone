@@ -239,8 +239,8 @@ export class NotificationListenerService {
     }
   }
 
-  private stripHtml(html: string): string {
-    return html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').trim();
+  private stripHtml(html: string | null | undefined): string {
+    return (html ?? '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').trim();
   }
 
   @OnEvent('comment.created')

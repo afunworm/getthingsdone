@@ -57,7 +57,7 @@ export class NotificationSchedulerService {
       SELECT t.*, p.flow_steps
       FROM todos t
       LEFT JOIN projects p ON p.id = t.project_id
-      WHERE t.due_date IS NOT NULL AND t.due_date > ?
+      WHERE t.due_date IS NOT NULL AND t.due_date > ? AND t.is_tour_demo = 0
     `).all(nowSec) as any[];
 
     for (const todo of todos) {
@@ -113,7 +113,7 @@ export class NotificationSchedulerService {
       SELECT t.*, p.flow_steps
       FROM todos t
       LEFT JOIN projects p ON p.id = t.project_id
-      WHERE t.due_date IS NOT NULL AND t.due_date < ?
+      WHERE t.due_date IS NOT NULL AND t.due_date < ? AND t.is_tour_demo = 0
     `).all(nowSec) as any[];
 
     for (const todo of todos) {

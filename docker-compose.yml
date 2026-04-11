@@ -1,11 +1,19 @@
+volumes:
+    db_data:
+    uploads_data:
+
+networks:
+    dokploy-network:
+        external: true
+
 services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./server/.env
-    volumes:
-      - ./data/db:/app/server/data
-      - ./data/uploads:/app/server/uploads
-    restart: unless-stopped
+    app:
+        build: .
+        networks:
+            - dokploy-network
+        env_file:
+            - ./server/.env
+        volumes:
+            - db_data:/app/server/data
+            - uploads_data:/app/server/uploads
+        restart: unless-stopped

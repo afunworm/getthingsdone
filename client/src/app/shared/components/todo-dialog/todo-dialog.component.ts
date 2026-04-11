@@ -1,10 +1,13 @@
-import { Component, inject, OnInit, signal, computed, ViewChild, ElementRef, ChangeDetectorRef, SecurityContext } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ViewChild, ElementRef, ChangeDetectorRef, SecurityContext, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer } from '@angular/platform-browser';
+import * as XLSX from 'xlsx';
+import * as mammoth from 'mammoth';
 import { DialogRef, DIALOG_DATA, Dialog } from '@angular/cdk/dialog';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
@@ -391,27 +394,87 @@ const DEFAULT_STEPS: StepDef[] = [
           </div>
           } <!-- end @if (!todo.parent_todo_id) -->
 
+          <!-- ── Attachments ────────────────────────────── -->
+          <div class="section">
+            <div class="section-hdr">
+              <span class="section-label">Attachments</span>
+              <span class="section-count">{{ todoAttachments().length }}</span>
+            </div>
+            <div class="att-grid">
+              @for (a of todoAttachments(); track a.id) {
+                <div class="att-item">
+                  @if (isImage(a.mimetype)) {
+                    <div class="att-thumb" (click)="openLightbox('/uploads/' + a.filename, a.mimetype, a.original_name)" title="{{ a.original_name }}">
+                      <img [src]="'/uploads/' + a.filename" [alt]="a.original_name" />
+                    </div>
+                  } @else if (isViewable(a.mimetype)) {
+                    <div class="att-file att-file--viewable" (click)="openLightbox('/uploads/' + a.filename, a.mimetype, a.original_name)" title="{{ a.original_name }}">
+                      <span class="material-icons" style="font-size:18px;color:var(--text-muted)">{{ fileIcon(a.mimetype) }}</span>
+                      <span class="att-file-name">{{ a.original_name }}</span>
+                    </div>
+                  } @else {
+                    <a class="att-file" [href]="'/uploads/' + a.filename" target="_blank" title="{{ a.original_name }}">
+                      <span class="material-icons" style="font-size:18px;color:var(--text-muted)">insert_drive_file</span>
+                      <span class="att-file-name">{{ a.original_name }}</span>
+                    </a>
+                  }
+                  <button class="att-del" (click)="deleteTodoAttachment(a.id)" title="Remove">
+                    <span class="material-icons" style="font-size:11px">close</span>
+                  </button>
+                </div>
+              }
+              <label class="att-add-btn">
+                <input type="file" multiple style="display:none"
+                  (change)="onTodoFilesSelected($event)" />
+                <span class="material-icons" style="font-size:15px">attach_file</span>
+                Add files
+              </label>
+            </div>
+          </div>
+
           <!-- ── Comments ───────────────────────────────── -->
           <div class="section">
             <div class="section-hdr">
               <span class="section-label">Comments</span>
               <span class="section-count">{{ comments().length }}</span>
+              <button class="sort-btn" (click)="commentSortDesc.set(!commentSortDesc())" title="Toggle sort order">
+                <span class="material-icons" style="font-size:13px">swap_vert</span>
+                {{ commentSortDesc() ? 'Newest first' : 'Oldest first' }}
+              </button>
             </div>
             <div class="comments-list">
-              @for (c of comments(); track c.id) {
+              @for (c of sortedComments(); track c.id) {
                 <div class="comment">
                   <div class="comment-hdr">
                     <span class="comment-author">{{ c.user_name }}</span>
                     <span class="comment-date">{{ c.created_at * 1000 | date:'MMM d, h:mm a' }}</span>
+                    @if (me()?.role === 'admin') {
+                      <button class="comment-del" (click)="deleteComment(c.id)" title="Delete comment">
+                        <span class="material-icons" style="font-size:13px">delete</span>
+                      </button>
+                    }
                   </div>
-                  <div class="comment-body" [innerHTML]="sanitize(c.body)"></div>
+                  @if (c.body) {
+                    <div class="comment-body" [innerHTML]="sanitize(c.body)"></div>
+                  }
                   @if (c.attachments?.length) {
-                    <div class="attachments">
+                    <div class="att-grid att-grid--sm">
                       @for (a of c.attachments; track a.id) {
-                        <a [href]="'/uploads/' + a.filename" target="_blank" class="attachment-chip">
-                          <span class="material-icons" style="font-size:11px">attach_file</span>
-                          {{ a.original_name }}
-                        </a>
+                        @if (isImage(a.mimetype)) {
+                          <div class="att-thumb att-thumb--sm" (click)="openLightbox('/uploads/' + a.filename, a.mimetype, a.original_name)" title="{{ a.original_name }}">
+                            <img [src]="'/uploads/' + a.filename" [alt]="a.original_name" />
+                          </div>
+                        } @else if (isViewable(a.mimetype)) {
+                          <span class="attachment-chip attachment-chip--viewable" (click)="openLightbox('/uploads/' + a.filename, a.mimetype, a.original_name)">
+                            <span class="material-icons" style="font-size:11px">{{ fileIcon(a.mimetype) }}</span>
+                            {{ a.original_name }}
+                          </span>
+                        } @else {
+                          <a class="attachment-chip" [href]="'/uploads/' + a.filename" target="_blank">
+                            <span class="material-icons" style="font-size:11px">attach_file</span>
+                            {{ a.original_name }}
+                          </a>
+                        }
                       }
                     </div>
                   }
@@ -430,13 +493,62 @@ const DEFAULT_STEPS: StepDef[] = [
                   (htmlChange)="newComment = $event"
                 ></app-rich-text-editor>
               </div>
-              <div style="display:flex;justify-content:flex-end">
-                <button class="btn btn-primary btn-sm" [disabled]="!newComment.trim()" (click)="postComment()">Post</button>
+              @if (pendingFiles().length) {
+                <div class="pending-files">
+                  @for (f of pendingFiles(); track f.name; let i = $index) {
+                    <span class="pending-chip">
+                      @if (isImageFile(f)) {
+                        <img class="pending-thumb" [src]="objectUrl(f)" />
+                      } @else {
+                        <span class="material-icons" style="font-size:12px">insert_drive_file</span>
+                      }
+                      {{ f.name }}
+                      <button class="pending-remove" (click)="removePendingFile(i)">
+                        <span class="material-icons" style="font-size:10px">close</span>
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+              <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+                <label class="btn-attach" title="Attach files">
+                  <input type="file" multiple style="display:none" (change)="onCommentFilesSelected($event)" />
+                  <span class="material-icons" style="font-size:16px">attach_file</span>
+                </label>
+                <button class="btn btn-primary btn-sm"
+                  [disabled]="!newComment.trim() && !pendingFiles().length"
+                  (click)="postComment()">Post</button>
               </div>
             </div>
           </div>
         }
       </div>
+
+    <!-- ── Lightbox ──────────────────────────────────────── -->
+    @if (lightboxItem()) {
+      <div class="lightbox-backdrop" (click)="closeLightbox()">
+        <button class="lightbox-close" (click)="closeLightbox()">
+          <span class="material-icons">close</span>
+        </button>
+        @if (isImage(lightboxItem()!.mimetype)) {
+          <img class="lightbox-img" [src]="lightboxItem()!.url" (click)="$event.stopPropagation()" />
+        } @else if (isPdf(lightboxItem()!.mimetype)) {
+          <div class="lightbox-doc" (click)="$event.stopPropagation()">
+            <iframe class="lightbox-pdf" [src]="lightboxItem()!.safeUrl" frameborder="0"></iframe>
+          </div>
+        } @else {
+          <div class="lightbox-doc" [class.lightbox-doc--word]="isDocx(lightboxItem()!.mimetype)" (click)="$event.stopPropagation()">
+            @if (lightboxLoading()) {
+              <div class="lightbox-loading">
+                <span class="material-icons spin" style="font-size:32px;color:#fff">refresh</span>
+              </div>
+            } @else {
+              <div class="lightbox-html-wrap" [innerHTML]="lightboxHtml()"></div>
+            }
+          </div>
+        }
+      </div>
+    }
 
       <!-- ── Footer ─────────────────────────────────────── -->
       <div class="dialog-footer">
@@ -719,12 +831,27 @@ const DEFAULT_STEPS: StepDef[] = [
     /* Comments */
     .comments-list {
       display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;
-      max-height: 200px; overflow-y: auto;
+      max-height: 340px; overflow-y: auto;
+    }
+    .sort-btn {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: 5px; border: 1px solid var(--surface-border);
+      background: transparent; cursor: pointer; color: var(--text-muted);
+      font-family: inherit; font-size: 11px; font-weight: 500;
+      &:hover { color: var(--text-primary); background: var(--surface-hover); }
     }
     .comment { padding: 8px 10px; background: var(--surface-hover); border-radius: 6px; }
-    .comment-hdr { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .comment-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
     .comment-author { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-    .comment-date { font-size: 11px; color: var(--text-muted); }
+    .comment-date { font-size: 11px; color: var(--text-muted); flex: 1; }
+    .comment-del {
+      flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 4px; border: none;
+      background: transparent; cursor: pointer; color: var(--text-muted);
+      opacity: 0; transition: opacity 120ms, color 120ms;
+      &:hover { color: #d32f2f; }
+    }
+    .comment:hover .comment-del { opacity: 1; }
     .comment-body { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-primary);
       p { margin: 0 0 4px; } p:last-child { margin-bottom: 0; }
       ul, ol { padding-left: 18px; margin: 4px 0; }
@@ -778,6 +905,121 @@ const DEFAULT_STEPS: StepDef[] = [
       .reminder-row:hover & { opacity: 1; }
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
+    /* Attachment grid */
+    .att-grid {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;
+    }
+    .att-grid--sm { margin-top: 6px; gap: 6px; }
+
+    .att-item { position: relative; }
+    .att-del {
+      position: absolute; top: -4px; right: -4px;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 0; background: #333; color: #fff;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; padding: 0;
+      .att-item:hover & { display: flex; }
+    }
+    .att-thumb {
+      width: 72px; height: 72px; border-radius: 6px;
+      overflow: hidden; cursor: zoom-in;
+      border: 1px solid var(--surface-border);
+      background: var(--surface-hover);
+      img { width: 100%; height: 100%; object-fit: cover; }
+    }
+    .att-thumb--sm { width: 56px; height: 56px; }
+    .att-file {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 7px;
+      border: 1px solid var(--surface-border);
+      background: var(--surface-hover);
+      text-decoration: none; color: var(--text-primary);
+      font-size: 12px; max-width: 180px;
+    }
+    .att-file-name {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .att-add-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 7px; height: 72px;
+      border: 1px dashed var(--surface-border);
+      background: transparent; cursor: pointer;
+      font-size: 12px; color: var(--text-muted);
+      transition: all 120ms;
+      &:hover { border-color: var(--accent-color); color: var(--accent-color); }
+    }
+
+    /* Comment file attach button */
+    .btn-attach {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+      color: var(--text-muted); transition: all 120ms;
+      &:hover { color: var(--accent-color); background: var(--surface-hover); }
+    }
+
+    /* Pending file chips */
+    .pending-files { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pending-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px; border-radius: 6px;
+      background: var(--surface-hover); border: 1px solid var(--surface-border);
+      font-size: 11px; color: var(--text-primary); max-width: 180px;
+    }
+    .pending-thumb { width: 18px; height: 18px; object-fit: cover; border-radius: 3px; }
+    .pending-remove {
+      flex-shrink: 0; border: 0; background: transparent; cursor: pointer;
+      color: var(--text-muted); padding: 0; display: flex; align-items: center;
+      &:hover { color: var(--text-primary); }
+    }
+
+    /* Lightbox */
+    .lightbox-backdrop {
+      position: fixed; inset: 0; z-index: 50000;
+      background: rgba(0,0,0,.85);
+      display: flex; align-items: center; justify-content: center;
+      cursor: zoom-out;
+    }
+    .lightbox-img {
+      max-width: 90vw; max-height: 90vh;
+      border-radius: 6px; cursor: default;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5);
+    }
+    .lightbox-doc {
+      width: 90vw; height: 90vh; cursor: default;
+      border-radius: 8px; overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5);
+      display: flex; flex-direction: column;
+    }
+    .lightbox-doc--word {
+      width: min(680px, 90vw); height: 90vh;
+    }
+    .lightbox-pdf {
+      width: 100%; height: 100%; border: none;
+    }
+    .lightbox-html-wrap {
+      width: 100%; height: 100%; overflow: auto;
+      background: #fff; padding: 32px 40px; box-sizing: border-box;
+      font-family: Georgia, serif; font-size: 14px; line-height: 1.6; color: #222;
+    }
+    :host ::ng-deep .lightbox-html-wrap {
+      table { border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 13px; }
+      td, th { border: 1px solid #999 !important; padding: 4px 8px; }
+      th { background: #e8e8e8; font-weight: 600; }
+    }
+    .lightbox-loading {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox-close {
+      position: fixed; top: 16px; right: 16px;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 0; background: rgba(255,255,255,.15); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 20px; z-index: 1;
+      &:hover { background: rgba(255,255,255,.25); }
+    }
+    .att-file--viewable { cursor: pointer; &:hover { background: var(--surface-hover); } }
+    .attachment-chip--viewable { cursor: pointer; &:hover { opacity: .8; } }
+
     .attachments { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .attachment-chip {
       display: inline-flex; align-items: center; gap: 3px;
@@ -824,18 +1066,33 @@ export class TodoDialogComponent implements OnInit {
   dialogRef = inject(DialogRef<any>);
   data: any = inject(DIALOG_DATA);
   private api = inject(ApiService);
+  private auth = inject(AuthService);
   private dialog = inject(Dialog);
   private cdr = inject(ChangeDetectorRef);
   private sanitizer = inject(DomSanitizer);
+  private zone = inject(NgZone);
+
+  readonly me = this.auth.user;
 
   todo: any = this.data.todo ? { ...this.data.todo } : {};
   get isCreate(): boolean { return this.data.mode === 'create'; }
 
   comments = signal<any[]>([]);
+  commentSortDesc = signal(true);
+  sortedComments = computed(() =>
+    this.commentSortDesc()
+      ? [...this.comments()].reverse()
+      : this.comments()
+  );
   reminders = signal<any[]>([]);
+  todoAttachments = signal<any[]>([]);
   accessibleUsers = signal<any[]>([]);
   creatorPickerOpen = signal(false);
   stepPickerOpen    = signal(false);
+  lightboxItem = signal<{ url: string; mimetype: string; name: string; safeUrl?: any } | null>(null);
+  lightboxHtml = signal<any>(null);
+  lightboxLoading = signal(false);
+  pendingFiles = signal<File[]>([]);
   newComment = '';
   newSubtask = '';
   newCreateSubtask = '';
@@ -956,6 +1213,7 @@ export class TodoDialogComponent implements OnInit {
     if (!this.isCreate) {
       this.api.get<any[]>(`/comments/todo/${this.todo.id}`).subscribe((c) => this.comments.set(c));
       this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((r) => this.reminders.set(r));
+      this.todoAttachments.set(this.todo.attachments ?? []);
       if (this.todo.project_id) {
         this.api.get<any[]>(`/projects/${this.todo.project_id}/users`).subscribe((u) => this.accessibleUsers.set(u));
       }
@@ -1179,11 +1437,108 @@ subNextStepLabel(sub: any): string {
   }
 
   postComment(): void {
+    const files = this.pendingFiles();
     this.api.post<any>(`/comments/todo/${this.todo.id}`, { body: this.newComment }).subscribe((c) => {
-      this.comments.update((list) => [...list, c]);
       this.newComment = '';
+      this.pendingFiles.set([]);
       this.commentEditorRef?.clear();
+      if (!files.length) {
+        this.comments.update((list) => [...list, c]);
+        return;
+      }
+      const uploads = files.map((f) => {
+        const fd = new FormData(); fd.append('file', f);
+        return this.api.post<any>(`/comments/${c.id}/attachments`, fd);
+      });
+      import('rxjs').then(({ forkJoin }) => {
+        forkJoin(uploads).subscribe({
+          next: (atts) => this.comments.update((list) => [...list, { ...c, attachments: atts }]),
+          error: ()    => this.comments.update((list) => [...list, c]),
+        });
+      });
     });
+  }
+
+  deleteComment(id: string): void {
+    this.api.delete(`/comments/${id}`).subscribe(() => {
+      this.comments.update((list) => list.filter((c) => c.id !== id));
+    });
+  }
+
+  // ── Attachments ───────────────────────────────────────
+  isImage(mimetype: string): boolean    { return mimetype?.startsWith('image/'); }
+  isPdf(mimetype: string): boolean      { return mimetype === 'application/pdf'; }
+  isXlsx(mimetype: string): boolean     { return mimetype?.includes('spreadsheet') || mimetype?.includes('excel'); }
+  isDocx(mimetype: string): boolean     { return mimetype?.includes('wordprocessingml') || mimetype?.includes('msword'); }
+  isViewable(mimetype: string): boolean { return this.isPdf(mimetype) || this.isXlsx(mimetype) || this.isDocx(mimetype); }
+  isImageFile(file: File): boolean      { return file.type.startsWith('image/'); }
+  objectUrl(file: File): string         { return URL.createObjectURL(file); }
+
+  fileIcon(mimetype: string): string {
+    if (this.isPdf(mimetype))  return 'picture_as_pdf';
+    if (this.isXlsx(mimetype)) return 'table_chart';
+    if (this.isDocx(mimetype)) return 'description';
+    return 'insert_drive_file';
+  }
+
+  openLightbox(url: string, mimetype: string, name: string): void {
+    this.lightboxHtml.set(null);
+    if (this.isPdf(mimetype)) {
+      const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      this.lightboxItem.set({ url, mimetype, name, safeUrl });
+      return;
+    }
+    this.lightboxItem.set({ url, mimetype, name });
+    if (this.isImage(mimetype)) return;
+    // XLSX or DOCX — fetch and render
+    this.lightboxLoading.set(true);
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then(async (buf) => {
+        let html = '';
+        if (this.isXlsx(mimetype)) {
+          const wb = XLSX.read(buf, { type: 'array' });
+          html = XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[0]]);
+        } else if (this.isDocx(mimetype)) {
+          const result = await mammoth.convertToHtml({ arrayBuffer: buf });
+          html = result.value;
+        }
+        const safe = this.sanitizer.bypassSecurityTrustHtml(html);
+        this.zone.run(() => { this.lightboxHtml.set(safe); this.lightboxLoading.set(false); });
+      })
+      .catch(() => this.zone.run(() => this.lightboxLoading.set(false)));
+  }
+
+  closeLightbox(): void { this.lightboxItem.set(null); this.lightboxHtml.set(null); }
+
+  onTodoFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const files = Array.from(input.files);
+    input.value = '';
+    files.forEach((file) => {
+      const fd = new FormData(); fd.append('file', file);
+      this.api.post<any>(`/todos/${this.todo.id}/attachments`, fd).subscribe((att) => {
+        this.todoAttachments.update((list) => [...list, att]);
+      });
+    });
+  }
+
+  deleteTodoAttachment(id: string): void {
+    this.api.delete(`/todos/attachments/${id}`).subscribe(() => {
+      this.todoAttachments.update((list) => list.filter((a) => a.id !== id));
+    });
+  }
+
+  onCommentFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.pendingFiles.update((list) => [...list, ...Array.from(input.files!)]);
+    input.value = '';
+  }
+
+  removePendingFile(index: number): void {
+    this.pendingFiles.update((list) => list.filter((_, i) => i !== index));
   }
 
   // ── Create-mode assignees & subtasks ─────────────────

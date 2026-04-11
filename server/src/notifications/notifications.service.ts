@@ -351,6 +351,7 @@ export class NotificationsService {
         AND t.due_date IS NOT NULL AND t.due_date < unixepoch()
         AND t.flow_step_index < 2
         AND t.parent_todo_id IS NULL
+        AND t.is_tour_demo = 0
 
       UNION ALL
 
@@ -364,6 +365,7 @@ export class NotificationsService {
       JOIN projects p ON p.id = t.project_id
       WHERE t.due_date IS NOT NULL AND t.due_date < unixepoch()
         AND t.parent_todo_id IS NULL
+        AND t.is_tour_demo = 0
         AND t.flow_step_index < (json_array_length(p.flow_steps) - 1)
         AND (
           p.owner_id = ?

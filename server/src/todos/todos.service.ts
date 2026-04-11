@@ -1,5 +1,5 @@
 import {
-  Injectable, NotFoundException, ForbiddenException,
+  Injectable, NotFoundException, ForbiddenException, BadRequestException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DatabaseService } from '../database/database.service';
@@ -9,6 +9,9 @@ import {
   TodoUserUnassignedEvent, TodoTeamUnassignedEvent,
 } from './todo.events';
 import { v4 as uuidv4 } from 'uuid';
+import { extname } from 'path';
+import { unlinkSync, existsSync } from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class TodosService {
@@ -67,7 +70,10 @@ export class TodosService {
 
     const todos = this.db.prepare(`
       SELECT t.*, u.name as created_by_name,
-        (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count
+        (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count,
+        (SELECT COUNT(*) FROM todo_attachments WHERE todo_id = t.id) +
+        (SELECT COUNT(*) FROM attachments a JOIN comments c ON c.id = a.comment_id WHERE c.todo_id = t.id) as attachment_count,
+        (SELECT COUNT(*) FROM comments WHERE todo_id = t.id) as comment_count
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
       WHERE t.project_id = ? AND t.parent_todo_id IS NULL
@@ -107,6 +113,7 @@ export class TodosService {
       ...this.parse(todo),
       assignees: this.getAssignees(id),
       subtodos: this.getSubtodos(id),
+      attachments: this.getTodoAttachments(id),
     };
   }
 
@@ -475,5 +482,52 @@ export class TodosService {
       is_inbox: !!row.is_inbox,
       recurrence_rule: row.recurrence_rule ? JSON.parse(row.recurrence_rule) : null,
     };
+  }
+
+  // ── Todo attachments ────────────────────────────────────────────────────────
+
+  getTodoAttachments(todoId: string) {
+    return this.db.prepare(
+      'SELECT * FROM todo_attachments WHERE todo_id = ? ORDER BY created_at',
+    ).all(todoId);
+  }
+
+  addTodoAttachment(
+    todoId: string,
+    file: { filename: string; originalname: string; mimetype: string; size: number; path: string },
+    userId: string,
+  ) {
+    this.checkAllowedExtension(file.originalname, file.path);
+    const id = uuidv4();
+    this.db.prepare(`
+      INSERT INTO todo_attachments (id, todo_id, filename, original_name, mimetype, size, uploaded_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, todoId, file.filename, file.originalname, file.mimetype, file.size, userId);
+    return this.db.prepare('SELECT * FROM todo_attachments WHERE id = ?').get(id);
+  }
+
+  deleteTodoAttachment(id: string, userId: string, userRole: string) {
+    const att = this.db.prepare('SELECT * FROM todo_attachments WHERE id = ?').get(id) as any;
+    if (!att) throw new NotFoundException();
+    if (userRole !== 'admin' && att.uploaded_by !== userId) throw new ForbiddenException();
+    this.db.prepare('DELETE FROM todo_attachments WHERE id = ?').run(id);
+    const filePath = join(process.cwd(), 'uploads', att.filename);
+    if (existsSync(filePath)) { try { unlinkSync(filePath); } catch (_) {} }
+  }
+
+  getAllowedExtensions(): string[] {
+    const row = this.db.prepare(
+      "SELECT value FROM app_settings WHERE key = 'allowed_upload_extensions'",
+    ).get() as any;
+    return (row?.value ?? 'jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip')
+      .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+  }
+
+  checkAllowedExtension(originalname: string, uploadedPath: string) {
+    const ext = extname(originalname).slice(1).toLowerCase();
+    if (!this.getAllowedExtensions().includes(ext)) {
+      try { unlinkSync(uploadedPath); } catch (_) {}
+      throw new BadRequestException(`File type .${ext} is not allowed`);
+    }
   }
 }

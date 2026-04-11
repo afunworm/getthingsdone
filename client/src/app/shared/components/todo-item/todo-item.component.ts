@@ -34,6 +34,7 @@ export interface SubtaskDroppedEvent {
   imports: [CommonModule, FormsModule, DropZoneDirective, DraggableDirective, DragHandleDirective],
   template: `
     <div class="todo-wrap"
+      [id]="'tour-task-' + todo.id"
       [class.priority-urgent]="todo.priority === 3"
       [class.priority-medium]="todo.priority === 2"
     >
@@ -44,6 +45,7 @@ export interface SubtaskDroppedEvent {
         <div class="left-actions" (click)="$event.stopPropagation()">
           <button
             class="btn-action btn-next"
+            [id]="'task-advance-' + todo.id"
             (click)="advance.emit(todo)"
             [disabled]="isCompleted"
             title="Advance to next step"
@@ -63,7 +65,7 @@ export interface SubtaskDroppedEvent {
               @if (hasMeta) {
                 <div class="todo-meta">
                   @if (todo.due_date) {
-                    <span class="meta-chip" [class.overdue]="isOverdue">
+                    <span class="meta-chip" [id]="'task-due-' + todo.id" [class.overdue]="isOverdue">
                       <span class="material-icons" style="font-size:11px">schedule</span>
                       {{ todo.due_date * 1000 | date:'MMM d' }}
                       @if (todo.is_recurring) {
@@ -72,7 +74,7 @@ export interface SubtaskDroppedEvent {
                     </span>
                   }
                   @if (assigneeLabel(todo)) {
-                    <span class="meta-chip">
+                    <span class="meta-chip" [id]="'task-assignee-' + todo.id">
                       <span class="material-icons" style="font-size:11px">person</span>
                       {{ assigneeLabel(todo) }}
                     </span>
@@ -83,9 +85,21 @@ export interface SubtaskDroppedEvent {
                     </span>
                   }
                   @if (todo.subtodos?.length) {
-                    <span class="meta-chip">
+                    <span class="meta-chip" [id]="'task-subtask-' + todo.id">
                       <span class="material-icons" style="font-size:11px">subdirectory_arrow_right</span>
                       {{ todo.subtodos.length }}
+                    </span>
+                  }
+                  @if (todo.attachment_count > 0) {
+                    <span class="meta-chip">
+                      <span class="material-icons" style="font-size:11px">attach_file</span>
+                      {{ todo.attachment_count }}
+                    </span>
+                  }
+                  @if (todo.comment_count > 0) {
+                    <span class="meta-chip" [id]="'task-comment-' + todo.id">
+                      <span class="material-icons" style="font-size:11px">chat_bubble_outline</span>
+                      {{ todo.comment_count }}
                     </span>
                   }
                   @if (todo.reminder_count > 0) {
@@ -115,6 +129,7 @@ export interface SubtaskDroppedEvent {
           <!-- Mark Done -->
           <button
             class="btn-action"
+            [id]="'task-done-' + todo.id"
             [class.btn-done-active]="isCompleted"
             (click)="isCompleted ? undone(todo) : complete.emit(todo)"
             [title]="isCompleted ? 'Click to undo — move back to New' : 'Mark as done'"
@@ -126,7 +141,7 @@ export interface SubtaskDroppedEvent {
 
           <!-- Add subtask (top-level only) -->
           @if (!todo.parent_todo_id) {
-            <button class="btn-action" (click)="openQuickAdd()" title="Add subtask">
+            <button class="btn-action" [id]="'task-add-subtask-' + todo.id" (click)="openQuickAdd()" title="Add subtask">
               <span class="material-icons" style="font-size:15px">subdirectory_arrow_right</span>
             </button>
           }
@@ -147,6 +162,7 @@ export interface SubtaskDroppedEvent {
           <div class="sch-wrap">
             <button
               class="btn-action"
+              [id]="'task-sch-btn-' + todo.id"
               [class.btn-sch-active]="todo.due_date || todo.is_recurring"
               (click)="toggleSchedule($event)"
               title="Due date / recurring"
@@ -193,6 +209,7 @@ export interface SubtaskDroppedEvent {
           <div class="pri-wrap">
             <button
               class="btn-action"
+              [id]="'task-pri-btn-' + todo.id"
               [class.btn-pri-active]="todo.priority > 0"
               [style.color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) : ''"
               (click)="togglePriority($event)"
@@ -223,6 +240,7 @@ export interface SubtaskDroppedEvent {
           <div class="rem-wrap">
             <button
               class="btn-action"
+              [id]="'task-rem-btn-' + todo.id"
               [class.btn-rem-active]="todo.reminder_count > 0"
               (click)="toggleReminder($event)"
               [title]="todo.reminder_count > 0 ? todo.reminder_count + ' active reminder(s)' : 'Set reminder'"
@@ -264,7 +282,7 @@ export interface SubtaskDroppedEvent {
           </div>
 
           <!-- Delete -->
-          <button class="btn-action btn-danger" (click)="delete.emit(todo.id)" title="Delete">
+          <button class="btn-action btn-danger" [id]="'task-del-btn-' + todo.id" (click)="delete.emit(todo.id)" title="Delete">
             <span class="material-icons" style="font-size:15px">delete</span>
           </button>
         </div>
@@ -753,7 +771,7 @@ export class TodoItemComponent implements OnChanges {
   get hasMeta(): boolean {
     const a = this.todo.assignees as Assignees | undefined;
     const hasAssignee = !!a && (a.users.length + a.teams.length) > 0;
-    return !!(this.todo.due_date || hasAssignee || this.todo.is_recurring || this.todo.subtodos?.length || this.todo.reminder_count > 0 || this.todo.priority > 0);
+    return !!(this.todo.due_date || hasAssignee || this.todo.is_recurring || this.todo.subtodos?.length || this.todo.reminder_count > 0 || this.todo.priority > 0 || this.todo.attachment_count > 0 || this.todo.comment_count > 0);
   }
 
   isAssigned(todo: any): boolean {
