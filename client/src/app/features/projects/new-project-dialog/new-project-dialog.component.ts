@@ -89,8 +89,8 @@ const EMOJI_PRESETS = [
           </div>
         </div>
 
-        <!-- Flow template (create only) -->
-        @if (!isEdit) {
+        <!-- Flow template (create always; edit admin-only) -->
+        @if (!isEdit || isAdmin()) {
           <div class="field">
             <label class="field-label">Flow template</label>
             <select class="field-select" [(ngModel)]="form.flowTemplateId">
@@ -306,6 +306,7 @@ export class NewProjectDialogComponent implements OnInit {
   dialogRef = inject(DialogRef<any>);
   data: any = inject(DIALOG_DATA);
   private api = inject(ApiService);
+  private auth = inject(AuthService);
 
   flows = signal<any[]>([]);
   pendingMembers = signal<AutocompleteResult[]>([]);
@@ -345,6 +346,7 @@ export class NewProjectDialogComponent implements OnInit {
       this.form.dueDateStr = p.due_date
         ? new Date(p.due_date * 1000).toISOString().slice(0, 10)
         : '';
+      this.form.flowTemplateId = p.flow_template_id ?? '';
       this.currentMembers.set(p.members ?? []);
     }
 
@@ -357,10 +359,9 @@ export class NewProjectDialogComponent implements OnInit {
     });
   }
 
-  canTransfer(): boolean {
-    // Only project owner or admin should see transfer
-    return true;
-  }
+  isAdmin(): boolean { return this.auth.user()?.role === 'admin'; }
+
+  canTransfer(): boolean { return true; }
 
   onEmojiInput(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
@@ -429,6 +430,9 @@ export class NewProjectDialogComponent implements OnInit {
     };
 
     if (this.isEdit) {
+      if (this.isAdmin() && this.form.flowTemplateId) {
+        body.flowTemplateId = this.form.flowTemplateId;
+      }
       this.api.patch<any>(`/projects/${this.project.id}`, body)
         .subscribe((p) => this.dialogRef.close(p));
     } else {
