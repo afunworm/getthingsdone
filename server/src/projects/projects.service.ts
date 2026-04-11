@@ -213,7 +213,7 @@ export class ProjectsService {
 
       this.db.prepare('UPDATE projects SET owner_id = ?, updated_at = unixepoch() WHERE id = ?')
         .run(newOwnerId, id);
-    })();
+    });
 
     return this.findById(id, currentUserId, userRole);
   }
