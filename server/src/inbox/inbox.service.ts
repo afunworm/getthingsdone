@@ -8,13 +8,14 @@ export class InboxService {
 
   findAll(userId: string) {
     return this.db.prepare(`
-      SELECT t.*, u.name AS created_by_name,
+      SELECT t.*, u.name AS created_by_name, at.name AS created_via_token_name,
         (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count,
         (SELECT COUNT(*) FROM todo_attachments WHERE todo_id = t.id) +
         (SELECT COUNT(*) FROM attachments a JOIN comments c ON c.id = a.comment_id WHERE c.todo_id = t.id) as attachment_count,
         (SELECT COUNT(*) FROM comments WHERE todo_id = t.id) as comment_count
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
+      LEFT JOIN api_tokens at ON at.id = t.created_via_token_id
       WHERE t.is_inbox = 1 AND t.inbox_user_id = ? AND t.parent_todo_id IS NULL
       ORDER BY t.sort_order, t.created_at
     `).all(userId, userId).map((t: any) => ({
@@ -64,6 +65,7 @@ export class InboxService {
       isRecurring?: boolean;
       recurrenceRule?: any;
       sortOrder?: number;
+      apiTokenId?: string;
     },
     userId: string,
   ) {
@@ -71,8 +73,8 @@ export class InboxService {
     this.db.prepare(`
       INSERT INTO todos (
         id, title, description, due_date, is_recurring, recurrence_rule,
-        sort_order, is_inbox, inbox_user_id, parent_todo_id, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+        sort_order, is_inbox, inbox_user_id, parent_todo_id, created_by, created_via_token_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
     `).run(
       id,
       dto.title,
@@ -84,6 +86,7 @@ export class InboxService {
       userId,
       dto.parentTodoId ?? null,
       userId,
+      dto.apiTokenId ?? null,
     );
     return this.db.prepare(`
       SELECT t.*, u.name AS created_by_name

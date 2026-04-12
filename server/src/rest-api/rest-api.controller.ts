@@ -100,6 +100,7 @@ export class RestApiController {
           projectId: dto.project_id,
           dueDate: dto.due_date,
           sortOrder: dto.sort_order,
+          apiTokenId: user.apiTokenId,
         },
         user.id,
         user.role,
@@ -117,6 +118,7 @@ export class RestApiController {
         description: dto.description,
         dueDate: dto.due_date,
         sortOrder: dto.sort_order,
+        apiTokenId: user.apiTokenId,
       },
       user.id,
     );

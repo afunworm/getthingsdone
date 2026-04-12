@@ -69,13 +69,14 @@ export class TodosService {
     }
 
     const todos = this.db.prepare(`
-      SELECT t.*, u.name as created_by_name,
+      SELECT t.*, u.name as created_by_name, at.name as created_via_token_name,
         (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count,
         (SELECT COUNT(*) FROM todo_attachments WHERE todo_id = t.id) +
         (SELECT COUNT(*) FROM attachments a JOIN comments c ON c.id = a.comment_id WHERE c.todo_id = t.id) as attachment_count,
         (SELECT COUNT(*) FROM comments WHERE todo_id = t.id) as comment_count
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
+      LEFT JOIN api_tokens at ON at.id = t.created_via_token_id
       WHERE t.project_id = ? AND t.parent_todo_id IS NULL
       ORDER BY t.sort_order, t.created_at
     `).all(userId, projectId).map(this.parse.bind(this));
@@ -102,9 +103,10 @@ export class TodosService {
 
   findById(id: string, userId: string, userRole: string) {
     const todo = this.db.prepare(`
-      SELECT t.*, u.name as created_by_name
+      SELECT t.*, u.name as created_by_name, at.name as created_via_token_name
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
+      LEFT JOIN api_tokens at ON at.id = t.created_via_token_id
       WHERE t.id = ?
     `).get(id) as any;
     if (!todo) throw new NotFoundException();
@@ -127,6 +129,7 @@ export class TodosService {
       isRecurring?: boolean;
       recurrenceRule?: { type: 'daily' | 'weekly' | 'monthly'; interval: number };
       sortOrder?: number;
+      apiTokenId?: string;
     },
     userId: string,
     userRole: string,
@@ -162,8 +165,8 @@ export class TodosService {
     this.db.prepare(`
       INSERT INTO todos (
         id, project_id, parent_todo_id, title, description,
-        due_date, is_recurring, recurrence_rule, sort_order, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        due_date, is_recurring, recurrence_rule, sort_order, created_by, created_via_token_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       dto.projectId ?? null,
@@ -175,6 +178,7 @@ export class TodosService {
       dto.recurrenceRule ? JSON.stringify(dto.recurrenceRule) : null,
       dto.sortOrder ?? 0,
       userId,
+      dto.apiTokenId ?? null,
     );
     const created = this.findById(id, userId, userRole);
     this.eventEmitter.emit('todo.created', new TodoCreatedEvent(created, userId));

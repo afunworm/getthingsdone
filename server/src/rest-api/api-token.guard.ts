@@ -24,7 +24,7 @@ export class ApiTokenGuard implements CanActivate {
     const hash = createHash('sha256').update(raw).digest('hex');
 
     const token = this.db.prepare(`
-      SELECT t.id, t.expires_at, u.id AS user_id, u.role AS user_role
+      SELECT t.id, t.name, t.expires_at, u.id AS user_id, u.role AS user_role
       FROM api_tokens t
       JOIN users u ON u.id = t.created_by
       WHERE t.token_hash = ?
@@ -38,7 +38,7 @@ export class ApiTokenGuard implements CanActivate {
 
     this.db.prepare('UPDATE api_tokens SET last_used_at = unixepoch() WHERE id = ?').run(token.id);
 
-    req.user = { id: token.user_id, role: token.user_role };
+    req.user = { id: token.user_id, role: token.user_role, apiTokenId: token.id, apiTokenName: token.name };
     return true;
   }
 }

@@ -155,9 +155,9 @@ const DEFAULT_STEPS: StepDef[] = [
           <div class="creator-wrap">
             <button
               class="meta-chip meta-static meta-creator"
-              [class.meta-creator-btn]="todo.project_id && accessibleUsers().length > 1"
-              (click)="todo.project_id && accessibleUsers().length > 1 && creatorPickerOpen.set(!creatorPickerOpen())"
-              [title]="todo.project_id && accessibleUsers().length > 1 ? 'Change creator' : ''"
+              [class.meta-creator-btn]="canChangeCreator"
+              (click)="canChangeCreator && creatorPickerOpen.set(!creatorPickerOpen())"
+              [title]="canChangeCreator ? 'Change creator' : ''"
             >
               <span class="material-icons" style="font-size:12px">edit_note</span>
               {{ creatorLabel }}
@@ -1298,8 +1298,16 @@ export class TodoDialogComponent implements OnInit {
     return `Every ${r.interval} ${r.type === 'daily' ? 'day' : r.type === 'weekly' ? 'week' : 'month'}${r.interval !== 1 ? 's' : ''}`;
   }
 
+  get canChangeCreator(): boolean {
+    if (!this.todo.project_id || this.accessibleUsers().length <= 1) return false;
+    if (this.todo.created_via_token_id && this.me()?.role !== 'admin') return false;
+    return true;
+  }
+
   get creatorLabel(): string {
-    const name = this.todo.created_by_name ?? 'Unknown';
+    const name = this.todo.created_via_token_name
+      ? `API:${this.todo.created_via_token_name}`
+      : (this.todo.created_by_name ?? 'Unknown');
     const date = this.todo.created_at
       ? new Date(this.todo.created_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '';
