@@ -1561,6 +1561,7 @@ subNextStepLabel(sub: any): string {
       this.newComment = '';
       this.pendingFiles.set([]);
       this.commentEditorRef?.clear();
+      this.todo = { ...this.todo, comment_count: (this.todo.comment_count ?? 0) + 1 };
       if (!files.length) {
         this.comments.update((list) => [...list, c]);
         return;
@@ -1581,6 +1582,7 @@ subNextStepLabel(sub: any): string {
   deleteComment(id: string): void {
     this.api.delete(`/comments/${id}`).subscribe(() => {
       this.comments.update((list) => list.filter((c) => c.id !== id));
+      this.todo = { ...this.todo, comment_count: Math.max(0, (this.todo.comment_count ?? 0) - 1) };
     });
   }
 
@@ -1639,6 +1641,7 @@ subNextStepLabel(sub: any): string {
       const fd = new FormData(); fd.append('file', file);
       this.api.post<any>(`/todos/${this.todo.id}/attachments`, fd).subscribe((att) => {
         this.todoAttachments.update((list) => [...list, att]);
+        this.todo = { ...this.todo, attachment_count: (this.todo.attachment_count ?? 0) + 1 };
       });
     });
   }
@@ -1646,6 +1649,7 @@ subNextStepLabel(sub: any): string {
   deleteTodoAttachment(id: string): void {
     this.api.delete(`/todos/attachments/${id}`).subscribe(() => {
       this.todoAttachments.update((list) => list.filter((a) => a.id !== id));
+      this.todo = { ...this.todo, attachment_count: Math.max(0, (this.todo.attachment_count ?? 0) - 1) };
     });
   }
 
