@@ -312,7 +312,7 @@ const DEFAULT_STEPS: StepDef[] = [
             </div>
             @if (!editingDesc()) {
               @if (todo.description) {
-                <div class="desc-html" [innerHTML]="sanitize(todo.description)" (click)="startEditDesc()"></div>
+                <div class="desc-html" [innerHTML]="sanitize(todo.description)" (click)="onDescClick($event)"></div>
               } @else {
                 <p class="desc-text desc-muted" (click)="startEditDesc()">No description — click to add</p>
               }
@@ -1690,9 +1690,15 @@ subNextStepLabel(sub: any): string {
     });
   }
 
+  onDescClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).closest('a')) return;
+    this.startEditDesc();
+  }
+
   // ── Comments ──────────────────────────────────────────
   sanitize(html: string): string {
-    return this.sanitizer.sanitize(SecurityContext.HTML, html) ?? '';
+    const patched = html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+    return this.sanitizer.sanitize(SecurityContext.HTML, patched) ?? '';
   }
 
   postComment(): void {

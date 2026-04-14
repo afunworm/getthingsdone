@@ -749,7 +749,8 @@ export class TodoItemComponent implements OnChanges {
   private sanitizer = inject(DomSanitizer);
 
   sanitizeHtml(html: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    const patched = html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+    return this.sanitizer.bypassSecurityTrustHtml(patched);
   }
 
   // Priority popover
