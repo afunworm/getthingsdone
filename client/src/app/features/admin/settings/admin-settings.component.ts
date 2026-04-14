@@ -87,9 +87,15 @@ const TIMEZONES = Intl.supportedValuesOf('timeZone');
                 <option value="30">30 days</option>
                 <option value="90">90 days</option>
                 <option value="365">1 year</option>
+                <option value="custom">Custom date…</option>
               </select>
+              @if (newTokenExpiry === 'custom') {
+                <input type="date" class="tz-select" style="width:160px;margin-top:4px"
+                  [(ngModel)]="newTokenCustomDate"
+                  [min]="tomorrow()" />
+              }
             </div>
-            <button class="btn-apply" [disabled]="!newTokenName.trim() || creatingToken()" (click)="createToken()">
+            <button class="btn-apply" [disabled]="!newTokenName.trim() || creatingToken() || (newTokenExpiry === 'custom' && !newTokenCustomDate)" (click)="createToken()">
               @if (creatingToken()) {
                 <span class="material-icons spin" style="font-size:14px">refresh</span>
               } @else {
@@ -255,6 +261,7 @@ export class AdminSettingsComponent implements OnInit {
   apiTokens    = signal<any[]>([]);
   newTokenName = '';
   newTokenExpiry = '';
+  newTokenCustomDate = '';
   newToken     = signal<string | null>(null);
   copied       = signal(false);
   creatingToken = signal(false);
@@ -282,19 +289,31 @@ export class AdminSettingsComponent implements OnInit {
     this.api.get<any[]>('/admin/api-tokens').subscribe((t) => this.apiTokens.set(t));
   }
 
+  tomorrow(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toLocaleDateString('en-CA');
+  }
+
   createToken(): void {
     const name = this.newTokenName.trim();
     if (!name) return;
     this.creatingToken.set(true);
-    const expiresAt = this.newTokenExpiry
-      ? Math.floor(Date.now() / 1000) + +this.newTokenExpiry * 86400
-      : null;
+    let expiresAt: number | null = null;
+    if (this.newTokenExpiry === 'custom') {
+      expiresAt = this.newTokenCustomDate
+        ? Math.floor(new Date(this.newTokenCustomDate + 'T23:59:59').getTime() / 1000)
+        : null;
+    } else if (this.newTokenExpiry) {
+      expiresAt = Math.floor(Date.now() / 1000) + +this.newTokenExpiry * 86400;
+    }
     this.api.post<any>('/admin/api-tokens', { name, expiresAt }).subscribe({
       next: (res) => {
         this.creatingToken.set(false);
         this.newToken.set(res.token);
         this.newTokenName = '';
         this.newTokenExpiry = '';
+        this.newTokenCustomDate = '';
         this.loadTokens();
       },
       error: () => this.creatingToken.set(false),
