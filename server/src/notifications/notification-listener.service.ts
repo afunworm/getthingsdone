@@ -31,6 +31,16 @@ export class NotificationListenerService {
 
   @OnEvent('todo.created')
   onTodoCreated(event: TodoCreatedEvent) {
+    // Always push to the creator's own stream so their UI refreshes immediately,
+    // even when the notification fan-out excludes them (e.g. API-created tasks).
+    this.notifications.pushToUser(event.callerId, {
+      type:      'task_created',
+      title:     '',
+      body:      '',
+      todoId:    event.todo.id,
+      projectId: event.todo.project_id ?? undefined,
+    });
+
     if (!event.todo.project_id) return;
     this.notifications.notifyProjectMembers(event.todo.project_id, 'on_task_created', {
       type:      'task_created',

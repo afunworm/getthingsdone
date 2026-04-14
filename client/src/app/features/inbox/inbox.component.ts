@@ -12,7 +12,9 @@ import { SubtaskDroppedEvent } from '../../shared/components/todo-item/todo-item
 import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-dialog.component';
 import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE } from '../../shared/components/filter-bar/filter-bar.component';
 import { PriorityService } from '../../core/services/priority.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { forkJoin, Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
 const INBOX_STEPS = [
   { label: 'New',         color: '#1565c0', bg: '#e3f2fd' },
@@ -229,6 +231,7 @@ export class InboxComponent implements OnInit, OnDestroy {
   auth             = inject(AuthService);
   dragState        = inject(DragStateService);
   prioritySvc      = inject(PriorityService);
+  private notifSvc = inject(NotificationService);
 
   readonly INBOX_STEPS = INBOX_STEPS;
 
@@ -245,6 +248,7 @@ export class InboxComponent implements OnInit, OnDestroy {
   userTeamIds      = signal<string[]>([]);
   quickTitle = '';
   private reloadSub?: Subscription;
+  private refreshSub?: Subscription;
 
   get sidebarDropIds(): string[] {
     return (this.store.inboxes() ?? []).map((i) => `inbox-drop-${i.id}`);
@@ -330,13 +334,17 @@ export class InboxComponent implements OnInit, OnDestroy {
     this.api.get<{ id: string }[]>('/teams/mine').subscribe((teams) =>
       this.userTeamIds.set(teams.map((t) => t.id)),
     );
-    this.reloadSub = this.store.reload$.subscribe(() => this.load());
+    this.reloadSub  = this.store.reload$.subscribe(() => this.load());
+    this.refreshSub = this.notifSvc.refresh$
+      .pipe(filter((p) => !p.projectId))
+      .subscribe(() => this.load());
   }
 
   ngOnDestroy(): void {
     this.dragState.currentProjectId.set(null);
     this.dragState.isDragging.set(false);
     this.reloadSub?.unsubscribe();
+    this.refreshSub?.unsubscribe();
   }
 
   toggleHideDone(): void {

@@ -76,6 +76,11 @@ export class NotificationsService {
     this.streams.delete(userId);
   }
 
+  /** Push directly to a user's SSE stream if they are currently connected. No-op otherwise. */
+  pushToUser(userId: string, payload: NotificationPayload): void {
+    this.streams.get(userId)?.next(payload);
+  }
+
   // ── Settings ───────────────────────────────────────────────────────────────
 
   /** Returns merged settings: project-level override over global default. */
