@@ -351,6 +351,7 @@ const DEFAULT_STEPS: StepDef[] = [
                       <option value="daily">days</option>
                       <option value="weekly">weeks</option>
                       <option value="monthly">months</option>
+                      <option value="yearly">years</option>
                     </select>
                   }
                 </div>
