@@ -641,6 +641,41 @@ const DEFAULT_STEPS: StepDef[] = [
       </div>
     }
 
+      <!-- ── History (admin only) ──────────────────────── -->
+      @if (!isCreate && isAdmin) {
+        <div class="section hist-section">
+          <div class="section-hdr" (click)="toggleHistory()">
+            <span class="section-label">History</span>
+            <span class="material-icons hist-chevron" [class.hist-open]="historyOpen()">expand_more</span>
+          </div>
+          @if (historyOpen()) {
+            <div class="hist-list">
+              @if (history().length === 0) {
+                <p class="hist-empty">No history recorded yet.</p>
+              }
+              @for (h of history(); track h.id) {
+                <div class="hist-row">
+                  <span class="hist-meta">
+                    <span class="hist-who">{{ h.changed_by_name }}</span>
+                    <span class="hist-when">{{ formatHistoryDate(h.changed_at) }}</span>
+                  </span>
+                  <span class="hist-change">
+                    <span class="hist-field">{{ humanizeField(h.field) }}</span>
+                    @if (h.field === 'created') {
+                      <span class="hist-val">{{ h.new_value }}</span>
+                    } @else {
+                      @if (h.old_value) { <span class="hist-old">{{ h.old_value }}</span> }
+                      @if (h.old_value && h.new_value) { <span class="hist-arrow">→</span> }
+                      @if (h.new_value) { <span class="hist-new">{{ h.new_value }}</span> }
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
       <!-- ── Footer ─────────────────────────────────────── -->
       <div class="dialog-footer">
         @if (isCreate) {
@@ -1038,6 +1073,27 @@ const DEFAULT_STEPS: StepDef[] = [
       .reminder-row:hover & { opacity: 1; }
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
+    /* History */
+    .hist-section { border-top: 1px solid var(--surface-border); padding-top: 0; }
+    .hist-section .section-hdr { cursor: pointer; user-select: none; }
+    .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
+    .hist-open { transform: rotate(180deg); }
+    .hist-list { display: flex; flex-direction: column; gap: 0; margin-top: 4px; max-height: 280px; overflow-y: auto; }
+    .hist-row {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 6px 0; border-bottom: 1px solid var(--surface-border);
+      &:last-child { border-bottom: none; }
+    }
+    .hist-meta { display: flex; gap: 8px; align-items: center; }
+    .hist-who { font-size: 11px; font-weight: 600; color: var(--text-primary); }
+    .hist-when { font-size: 11px; color: var(--text-muted); }
+    .hist-change { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+    .hist-field { font-size: 12px; font-weight: 500; color: var(--text-secondary); min-width: 80px; }
+    .hist-val { font-size: 12px; color: var(--text-primary); }
+    .hist-old { font-size: 12px; color: var(--text-muted); text-decoration: line-through; }
+    .hist-new { font-size: 12px; color: var(--text-primary); }
+    .hist-arrow { font-size: 11px; color: var(--text-muted); }
+    .hist-empty { font-size: 12px; color: var(--text-muted); margin: 6px 0; }
     /* Attachment grid */
     .att-grid {
       display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;
@@ -1246,6 +1302,10 @@ export class TodoDialogComponent implements OnInit {
   reminders = signal<any[]>([]);
   todoAttachments = signal<any[]>([]);
   accessibleUsers = signal<any[]>([]);
+
+  get isAdmin(): boolean { return this.me()?.role === 'admin'; }
+  historyOpen = signal(false);
+  history = signal<any[]>([]);
   creatorPickerOpen = signal(false);
   stepPickerOpen    = signal(false);
   priorityOpen      = signal(false);
@@ -1847,5 +1907,43 @@ subNextStepLabel(sub: any): string {
 
   close(): void {
     this.dialogRef.close(this.isCreate ? undefined : this.todo);
+  }
+
+  // ── History ────────────────────────────────────────────
+
+  toggleHistory(): void {
+    if (!this.historyOpen() && this.history().length === 0) {
+      this.api.get<any[]>(`/todos/${this.todo.id}/history`).subscribe((h) => this.history.set(h));
+    }
+    this.historyOpen.update((v) => !v);
+  }
+
+  formatHistoryDate(ts: number): string {
+    return new Date(ts * 1000).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  humanizeField(field: string): string {
+    const map: Record<string, string> = {
+      created:          'Created',
+      title:            'Title',
+      description:      'Description',
+      due_date:         'Due date',
+      priority:         'Priority',
+      is_recurring:     'Recurring',
+      recurrence_rule:  'Recurrence',
+      status:           'Status',
+      project:          'Project',
+      moved:            'Moved',
+      created_by:       'Creator',
+      parent_task:      'Parent task',
+      assignee_added:   'Assignee added',
+      assignee_removed: 'Assignee removed',
+      team_assigned:    'Team assigned',
+      team_unassigned:  'Team unassigned',
+    };
+    return map[field] ?? field;
   }
 }

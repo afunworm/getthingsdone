@@ -41,6 +41,29 @@ export class TodosService {
     `).get(todo.project_id, userId));
   }
 
+  // ── History ────────────────────────────────────────────────────────────────
+
+  private recordHistory(todoId: string, userId: string, field: string, oldVal: any, newVal: any): void {
+    this.db.prepare(
+      'INSERT INTO todo_history (id, todo_id, changed_by, field, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(
+      uuidv4(), todoId, userId, field,
+      oldVal !== null && oldVal !== undefined ? String(oldVal) : null,
+      newVal !== null && newVal !== undefined ? String(newVal) : null,
+    );
+  }
+
+  getHistory(id: string, userRole: string): any[] {
+    if (userRole !== 'admin') throw new ForbiddenException();
+    return this.db.prepare(`
+      SELECT h.*, u.name AS changed_by_name
+      FROM todo_history h
+      LEFT JOIN users u ON u.id = h.changed_by
+      WHERE h.todo_id = ?
+      ORDER BY h.changed_at DESC
+    `).all(id);
+  }
+
   private getAssignees(todoId: string): { users: any[]; teams: any[] } {
     const rows = this.db.prepare(`
       SELECT ta.user_id, ta.team_id, u.name AS user_name, te.name AS team_name
@@ -129,6 +152,7 @@ export class TodosService {
       isRecurring?: boolean;
       recurrenceRule?: { type: 'daily' | 'weekly' | 'monthly'; interval: number };
       sortOrder?: number;
+      priority?: number;
       apiTokenId?: string;
     },
     userId: string,
@@ -165,8 +189,8 @@ export class TodosService {
     this.db.prepare(`
       INSERT INTO todos (
         id, project_id, parent_todo_id, title, description,
-        due_date, is_recurring, recurrence_rule, sort_order, created_by, created_via_token_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        due_date, is_recurring, recurrence_rule, sort_order, created_by, created_via_token_id, priority
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       dto.projectId ?? null,
@@ -179,9 +203,11 @@ export class TodosService {
       dto.sortOrder ?? 0,
       userId,
       dto.apiTokenId ?? null,
+      dto.priority ?? 0,
     );
     const created = this.findById(id, userId, userRole);
     this.eventEmitter.emit('todo.created', new TodoCreatedEvent(created, userId));
+    this.recordHistory(id, userId, 'created', null, dto.title);
     return created;
   }
 
@@ -262,6 +288,45 @@ export class TodosService {
       this.eventEmitter.emit('todo.updated', new TodoUpdatedEvent(updated, userId, changedFields));
     }
 
+    // ── History diffs ─────────────────────────────────────────────────────────
+    if (dto.title !== undefined && dto.title !== todo.title) {
+      this.recordHistory(id, userId, 'title', todo.title, dto.title);
+    }
+    if (hasDesc && dto.description !== todo.description) {
+      this.recordHistory(id, userId, 'description', todo.description ?? null, dto.description ?? null);
+    }
+    if (dto.dueDate !== undefined) {
+      const oldDate = todo.due_date ? new Date(todo.due_date * 1000).toISOString().split('T')[0] : null;
+      const newDate = dto.dueDate ? new Date(dto.dueDate * 1000).toISOString().split('T')[0] : null;
+      if (oldDate !== newDate) this.recordHistory(id, userId, 'due_date', oldDate, newDate);
+    }
+    if (dto.priority !== undefined && dto.priority !== todo.priority) {
+      this.recordHistory(id, userId, 'priority', todo.priority, dto.priority);
+    }
+    if (hasIsRecurring && (dto.isRecurring ? 1 : 0) !== todo.is_recurring) {
+      this.recordHistory(id, userId, 'is_recurring', todo.is_recurring ? 'Yes' : 'No', dto.isRecurring ? 'Yes' : 'No');
+    }
+    if (dto.recurrenceRule !== undefined) {
+      const oldRule = todo.recurrence_rule ?? null;
+      const newRule = dto.recurrenceRule ? JSON.stringify(dto.recurrenceRule) : null;
+      if (oldRule !== newRule) this.recordHistory(id, userId, 'recurrence_rule', oldRule, newRule);
+    }
+    if (hasParent && dto.parentTodoId !== todo.parent_todo_id) {
+      const oldTitle = todo.parent_todo_id ? (this.db.prepare('SELECT title FROM todos WHERE id = ?').get(todo.parent_todo_id) as any)?.title ?? todo.parent_todo_id : null;
+      const newTitle = dto.parentTodoId ? (this.db.prepare('SELECT title FROM todos WHERE id = ?').get(dto.parentTodoId) as any)?.title ?? dto.parentTodoId : null;
+      this.recordHistory(id, userId, 'parent_task', oldTitle, newTitle);
+    }
+    if (hasProjectId && dto.projectId !== todo.project_id) {
+      const oldProj = todo.project_id ? (this.db.prepare('SELECT name FROM projects WHERE id = ?').get(todo.project_id) as any)?.name ?? todo.project_id : 'Personal Inbox';
+      const newProj = dto.projectId ? (this.db.prepare('SELECT name FROM projects WHERE id = ?').get(dto.projectId) as any)?.name ?? dto.projectId : 'Personal Inbox';
+      this.recordHistory(id, userId, 'project', oldProj, newProj);
+    }
+    if (hasCreatedBy && dto.createdBy !== todo.created_by) {
+      const oldUser = todo.created_by ? (this.db.prepare('SELECT name FROM users WHERE id = ?').get(todo.created_by) as any)?.name ?? todo.created_by : null;
+      const newUser = dto.createdBy ? (this.db.prepare('SELECT name FROM users WHERE id = ?').get(dto.createdBy) as any)?.name ?? dto.createdBy : null;
+      this.recordHistory(id, userId, 'created_by', oldUser, newUser);
+    }
+
     return updated;
   }
 
@@ -282,9 +347,13 @@ export class TodosService {
     `).run(id, todoId, dto.userId ?? null, dto.teamId ?? null);
 
     if (dto.userId) {
+      const uname = (this.db.prepare('SELECT name FROM users WHERE id = ?').get(dto.userId) as any)?.name ?? dto.userId;
+      this.recordHistory(todoId, callerId, 'assignee_added', null, uname);
       this.eventEmitter.emit('todo.user_assigned', new TodoUserAssignedEvent(todo, callerId, dto.userId));
     }
     if (dto.teamId) {
+      const tname = (this.db.prepare('SELECT name FROM teams WHERE id = ?').get(dto.teamId) as any)?.name ?? dto.teamId;
+      this.recordHistory(todoId, callerId, 'team_assigned', null, tname);
       this.eventEmitter.emit('todo.team_assigned', new TodoTeamAssignedEvent(todo, callerId, dto.teamId));
     }
 
@@ -303,10 +372,14 @@ export class TodosService {
     if (!this.canAccess(todo, callerId, callerRole)) throw new ForbiddenException();
 
     if (targetUserId) {
+      const uname = (this.db.prepare('SELECT name FROM users WHERE id = ?').get(targetUserId) as any)?.name ?? targetUserId;
       this.db.prepare('DELETE FROM todo_assignees WHERE todo_id = ? AND user_id = ?').run(todoId, targetUserId);
+      this.recordHistory(todoId, callerId, 'assignee_removed', uname, null);
       this.eventEmitter.emit('todo.user_unassigned', new TodoUserUnassignedEvent(todo, callerId, targetUserId));
     } else if (targetTeamId) {
+      const tname = (this.db.prepare('SELECT name FROM teams WHERE id = ?').get(targetTeamId) as any)?.name ?? targetTeamId;
       this.db.prepare('DELETE FROM todo_assignees WHERE todo_id = ? AND team_id = ?').run(todoId, targetTeamId);
+      this.recordHistory(todoId, callerId, 'team_unassigned', tname, null);
       this.eventEmitter.emit('todo.team_unassigned', new TodoTeamUnassignedEvent(todo, callerId, targetTeamId));
     }
 
@@ -348,6 +421,10 @@ export class TodosService {
 
     this.eventEmitter.emit('todo.moved', new TodoMovedEvent(todo, callerId, fromProjectId, toProjectId));
 
+    const fromLabel = fromProjectId ? (this.db.prepare('SELECT name FROM projects WHERE id = ?').get(fromProjectId) as any)?.name ?? fromProjectId : 'Personal Inbox';
+    const toLabel   = toProjectId   ? (this.db.prepare('SELECT name FROM projects WHERE id = ?').get(toProjectId)   as any)?.name ?? toProjectId   : 'Personal Inbox';
+    this.recordHistory(id, callerId, 'moved', fromLabel, toLabel);
+
     return this.findById(id, callerId, callerRole);
   }
 
@@ -372,6 +449,7 @@ export class TodosService {
       this.spawnNextRecurrence(todo, userId);
     }
 
+    this.recordHistory(id, userId, 'status', this.stepName(steps[todo.flow_step_index]), this.stepName(steps[nextIndex]));
     this.eventEmitter.emit('todo.flow_changed', new TodoFlowChangedEvent(
       todo, userId, this.stepName(steps[nextIndex]), isFinal, false,
     ));
@@ -397,6 +475,7 @@ export class TodosService {
       this.spawnNextRecurrence(todo, userId);
     }
 
+    this.recordHistory(id, userId, 'status', this.stepName(steps[todo.flow_step_index]), this.stepName(steps[steps.length - 1]));
     this.eventEmitter.emit('todo.flow_changed', new TodoFlowChangedEvent(
       todo, userId, this.stepName(steps[steps.length - 1]), true, false,
     ));
@@ -420,6 +499,9 @@ export class TodosService {
       .run(clamped, id);
 
     const isUndone = stepIndex === 0;
+    if (clamped !== todo.flow_step_index) {
+      this.recordHistory(id, userId, 'status', this.stepName(steps[todo.flow_step_index]), this.stepName(steps[clamped]));
+    }
     this.eventEmitter.emit('todo.flow_changed', new TodoFlowChangedEvent(
       todo, userId, this.stepName(steps[clamped]), clamped >= steps.length - 1, isUndone,
     ));

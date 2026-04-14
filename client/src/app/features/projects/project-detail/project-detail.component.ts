@@ -587,7 +587,10 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
       data: { mode: 'create', projectId: this.id, flowSteps: this.project()?.flow_steps },
     });
     ref.closed.subscribe((todo: any) => {
-      if (todo) this.todos.update((list) => [...list, todo]);
+      if (todo) {
+        this.todos.update((list) => [...list, todo]);
+        this.store.adjustCounts(this.id, 1, 1);
+      }
     });
   }
 
@@ -651,24 +654,35 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   advanceTodo(todo: any): void {
+    const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/advance`, {}).subscribe((updated) => {
       this.todos.update((list) => this.mergeTodo(list, updated));
+      if (wasNew) this.store.adjustCounts(this.id, -1, 0);
     });
   }
 
   completeTodo(todo: any): void {
+    const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/complete`, {}).subscribe((updated) => {
       this.todos.update((list) => this.mergeTodo(list, updated));
+      if (wasNew) this.store.adjustCounts(this.id, -1, 0);
     });
   }
 
   todoAssigned(updated: any): void {
+    // Handle undo-to-step-0: if updated is now step 0, find current step in list to diff
+    const current = this.todos().find((t) => t.id === updated.id);
+    if (current && updated.flow_step_index === 0 && current.flow_step_index !== 0) {
+      this.store.adjustCounts(this.id, 1, 0);
+    }
     this.todos.update((list) => this.mergeTodo(list, updated));
   }
 
   deleteTodo(id: string): void {
+    const todo = this.todos().find((t) => t.id === id);
     this.api.delete(`/todos/${id}`).subscribe(() => {
       this.todos.update((list) => list.filter((t) => t.id !== id));
+      if (todo) this.store.adjustCounts(this.id, todo.flow_step_index === 0 ? -1 : 0, -1);
     });
   }
 }

@@ -46,4 +46,15 @@ export class InboxStoreService {
   remove(id: string): void {
     this.inboxes.update((l) => (l ?? []).filter((p) => p.id !== id));
   }
+
+  /** Adjust new_task_count / all_task_count locally after a mutation, so the sidebar updates immediately. */
+  adjustCounts(projectId: string, newDelta: number, allDelta: number): void {
+    this.inboxes.update((l) => (l ?? []).map((p) =>
+      p.id === projectId ? {
+        ...p,
+        new_task_count: Math.max(0, (p.new_task_count ?? 0) + newDelta),
+        all_task_count: Math.max(0, (p.all_task_count ?? 0) + allDelta),
+      } : p,
+    ));
+  }
 }
