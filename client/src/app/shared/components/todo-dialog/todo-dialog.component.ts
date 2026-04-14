@@ -386,7 +386,12 @@ const DEFAULT_STEPS: StepDef[] = [
                 A due date is required for recurring tasks.
               </p>
             }
-            @if (schedDirty()) {
+            @if (schedSaved()) {
+              <div class="sch-saved-msg">
+                <span class="material-icons" style="font-size:13px">check_circle</span>
+                Saved
+              </div>
+            } @else if (schedDirty()) {
               <div class="inline-actions" style="margin-top:8px">
                 <button class="btn btn-primary btn-sm"
                   [disabled]="schedRecurring() && !schedDueDate()"
@@ -803,6 +808,11 @@ const DEFAULT_STEPS: StepDef[] = [
     .recur-warn {
       display: flex; align-items: center; gap: 5px; margin: -4px 0 10px;
       font-size: 12px; color: #e65100;
+    }
+    .sch-saved-msg {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 8px; font-size: 12px; font-weight: 500;
+      color: var(--color-success, #2e7d32);
     }
     .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; input { cursor: pointer; } }
     .inline-num { width: 60px !important; }
@@ -1297,16 +1307,14 @@ export class TodoDialogComponent implements OnInit {
   descDraft  = '';
 
   // Schedule section (local draft — not saved until Save is clicked)
-  schedDueDate  = signal('');
+  schedDueDate   = signal('');
   schedRecurring = signal(false);
   schedInterval  = signal(1);
   schedType      = signal<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
+  schedSaved     = signal(false);
 
-  // Saved baseline — used to detect dirty state and to cancel
-  private savedDueDate   = '';
-  private savedRecurring = false;
-  private savedInterval  = 1;
-  private savedType: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'weekly';
+  // Saved baseline as a signal so schedDirty computed re-runs when it changes
+  private savedSchedule = signal({ dueDate: '', recurring: false, interval: 1, type: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly' });
 
   nextOccurrences = computed(() => {
     if (!this.schedRecurring() || !this.schedDueDate()) return [];
@@ -1339,14 +1347,15 @@ export class TodoDialogComponent implements OnInit {
     return dates;
   });
 
-  schedDirty = computed(() =>
-    this.schedDueDate()   !== this.savedDueDate   ||
-    this.schedRecurring() !== this.savedRecurring ||
-    (this.schedRecurring() && (
-      this.schedInterval() !== this.savedInterval ||
-      this.schedType()     !== this.savedType
-    )),
-  );
+  schedDirty = computed(() => {
+    const s = this.savedSchedule();
+    return this.schedDueDate()   !== s.dueDate   ||
+           this.schedRecurring() !== s.recurring ||
+           (this.schedRecurring() && (
+             this.schedInterval() !== s.interval ||
+             this.schedType()     !== s.type
+           ));
+  });
 
   // Create form
   form = {
@@ -1461,10 +1470,7 @@ export class TodoDialogComponent implements OnInit {
       this.schedRecurring.set(rr);
       this.schedInterval.set(ri);
       this.schedType.set(rt);
-      this.savedDueDate   = dd;
-      this.savedRecurring = rr;
-      this.savedInterval  = ri;
-      this.savedType      = rt;
+      this.savedSchedule.set({ dueDate: dd, recurring: rr, interval: ri, type: rt });
     }
   }
 
@@ -1552,19 +1558,23 @@ export class TodoDialogComponent implements OnInit {
       recurrenceRule,
     }).subscribe((updated) => {
       this.todo = { ...this.todo, ...updated };
-      this.savedDueDate   = this.schedDueDate();
-      this.savedRecurring = this.schedRecurring();
-      this.savedInterval  = this.schedInterval();
-      this.savedType      = this.schedType();
-      this.cdr.detectChanges();
+      this.savedSchedule.set({
+        dueDate: this.schedDueDate(),
+        recurring: this.schedRecurring(),
+        interval: this.schedInterval(),
+        type: this.schedType(),
+      });
+      this.schedSaved.set(true);
+      setTimeout(() => this.schedSaved.set(false), 2000);
     });
   }
 
   resetSchedule(): void {
-    this.schedDueDate.set(this.savedDueDate);
-    this.schedRecurring.set(this.savedRecurring);
-    this.schedInterval.set(this.savedInterval);
-    this.schedType.set(this.savedType);
+    const s = this.savedSchedule();
+    this.schedDueDate.set(s.dueDate);
+    this.schedRecurring.set(s.recurring);
+    this.schedInterval.set(s.interval);
+    this.schedType.set(s.type);
   }
 
   // ── Step control ──────────────────────────────────────
