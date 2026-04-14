@@ -1063,7 +1063,7 @@ const DEFAULT_STEPS: StepDef[] = [
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
     .hist-open { transform: rotate(180deg); }
-    .hist-list { margin-top: 4px; max-height: 280px; overflow-y: auto; padding: 0 4px; }
+    .hist-list { margin-top: 4px; max-height: 280px; overflow-y: auto; padding: 0; }
     .hist-row { padding: 5px 0; border-bottom: 1px solid var(--surface-border); &:last-child { border-bottom: none; } }
     .hist-meta { display: flex; gap: 8px; margin-bottom: 2px; }
     .hist-who { font-size: 11px; font-weight: 600; color: var(--text-primary); }
