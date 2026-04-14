@@ -81,6 +81,14 @@ export class NotificationsService {
     this.streams.get(userId)?.next(payload);
   }
 
+  /** Push directly to ALL members of a project — bypasses notification settings. */
+  pushToProjectMembers(projectId: string, payload: NotificationPayload): void {
+    const memberIds = this.getProjectMemberIds(projectId);
+    for (const userId of memberIds) {
+      this.streams.get(userId)?.next(payload);
+    }
+  }
+
   // ── Settings ───────────────────────────────────────────────────────────────
 
   /** Returns merged settings: project-level override over global default. */

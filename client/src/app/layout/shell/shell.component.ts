@@ -1039,8 +1039,8 @@ export class ShellComponent implements OnInit, OnDestroy {
       if (payload.type === 'task_reminder') {
         this.reminderQueue.update((q) => [...q, payload]);
       }
-      if (payload.type === 'task_created' && payload.projectId) {
-        this.store.adjustCounts(payload.projectId, 1, 1);
+      if (payload.type === 'ui_refresh' && payload.projectId) {
+        this.api.get<any>(`/projects/${payload.projectId}`).subscribe((p) => this.store.update(p));
       }
     });
     this.api.get<any[]>('/notifications/overdue-check').subscribe((items) => {

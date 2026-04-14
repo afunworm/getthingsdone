@@ -31,16 +31,25 @@ export class NotificationListenerService {
 
   @OnEvent('todo.created')
   onTodoCreated(event: TodoCreatedEvent) {
-    // Push a ui_refresh signal to the creator's stream so their view reloads
-    // immediately. This is separate from the notification fan-out below and
-    // intentionally uses a distinct type so the client skips bell/toast/badge for it.
-    this.notifications.pushToUser(event.callerId, {
-      type:      'ui_refresh',
-      title:     '',
-      body:      '',
-      todoId:    event.todo.id,
-      projectId: event.todo.project_id ?? undefined,
-    });
+    // Push a ui_refresh signal so connected clients reload their view immediately.
+    // For project tasks: broadcast to all project members so their badge/highlight updates.
+    // For personal inbox tasks: push only to the creator.
+    if (event.todo.project_id) {
+      this.notifications.pushToProjectMembers(event.todo.project_id, {
+        type:      'ui_refresh',
+        title:     '',
+        body:      '',
+        todoId:    event.todo.id,
+        projectId: event.todo.project_id,
+      });
+    } else {
+      this.notifications.pushToUser(event.callerId, {
+        type:      'ui_refresh',
+        title:     '',
+        body:      '',
+        todoId:    event.todo.id,
+      });
+    }
 
     if (!event.todo.project_id) return;
 
