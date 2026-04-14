@@ -66,7 +66,7 @@ export class ProjectsService {
   findAll(userId: string, userRole: string) {
     const prefJoin = `LEFT JOIN user_project_prefs upr ON upr.project_id = p.id AND upr.user_id = ?`;
     const prefCols = `
-      COALESCE(upr.show_task_count, 0) as pref_show_count,
+      COALESCE(upr.show_task_count, 1) as pref_show_count,
       COALESCE(upr.count_mode, 'new') as pref_count_mode,
       upr.highlight_color as pref_highlight,
       (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL AND t.flow_step_index = 0) as new_task_count,
@@ -113,7 +113,7 @@ export class ProjectsService {
       SELECT p.*, u.name as owner_name,
         (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL AND t.flow_step_index = 0) as new_task_count,
         (SELECT COUNT(*) FROM todos t WHERE t.project_id = p.id AND t.parent_todo_id IS NULL) as all_task_count,
-        COALESCE(upr.show_task_count, 0) as pref_show_count,
+        COALESCE(upr.show_task_count, 1) as pref_show_count,
         COALESCE(upr.count_mode, 'new') as pref_count_mode,
         upr.highlight_color as pref_highlight
       FROM projects p

@@ -389,7 +389,7 @@ export class NewProjectDialogComponent implements OnInit {
   };
 
   prefs = {
-    show_task_count: false,
+    show_task_count: true,
     count_mode: 'new' as 'new' | 'all',
     highlight_color: null as string | null,
   };
