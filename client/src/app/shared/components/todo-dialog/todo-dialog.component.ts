@@ -209,6 +209,12 @@ const DEFAULT_STEPS: StepDef[] = [
               </select>
             }
           </div>
+          @if (form.isRecurring && !form.dueDateStr) {
+            <p class="recur-warn">
+              <span class="material-icons" style="font-size:13px">warning</span>
+              A due date is required for recurring tasks.
+            </p>
+          }
 
           <!-- Assignees (create mode — projects only) -->
           @if (!data.isInbox) {
@@ -347,9 +353,17 @@ const DEFAULT_STEPS: StepDef[] = [
                 }
               </div>
             </div>
+            @if (schedRecurring() && !schedDueDate()) {
+              <p class="recur-warn" style="margin-top:6px">
+                <span class="material-icons" style="font-size:13px">warning</span>
+                A due date is required for recurring tasks.
+              </p>
+            }
             @if (schedDirty()) {
               <div class="inline-actions" style="margin-top:8px">
-                <button class="btn btn-primary btn-sm" (click)="saveSchedule()">Save</button>
+                <button class="btn btn-primary btn-sm"
+                  [disabled]="schedRecurring() && !schedDueDate()"
+                  (click)="saveSchedule()">Save</button>
                 <button class="btn btn-ghost btn-sm" (click)="resetSchedule()">Cancel</button>
               </div>
             }
@@ -604,7 +618,7 @@ const DEFAULT_STEPS: StepDef[] = [
       <div class="dialog-footer">
         @if (isCreate) {
           <button class="btn btn-ghost" (click)="close()">Cancel</button>
-          <button class="btn btn-primary" [disabled]="!form.title.trim()" (click)="submit()">Create Task</button>
+          <button class="btn btn-primary" [disabled]="!form.title.trim() || (form.isRecurring && !form.dueDateStr)" (click)="submit()">Create Task</button>
         } @else {
           <button class="btn btn-danger" (click)="deleteTodo()">
             <span class="material-icons" style="font-size:14px">delete</span>
@@ -728,6 +742,10 @@ const DEFAULT_STEPS: StepDef[] = [
     /* Create form fields */
     .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
     .recurrence-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .recur-warn {
+      display: flex; align-items: center; gap: 5px; margin: -4px 0 10px;
+      font-size: 12px; color: #e65100;
+    }
     .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; input { cursor: pointer; } }
     .inline-num { width: 60px !important; }
     .inline-sel { width: 90px !important; }
