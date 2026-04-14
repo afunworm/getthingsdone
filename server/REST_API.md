@@ -17,7 +17,7 @@ Replace `your-server:3000` with wherever FlowTask is hosted.
 All requests require a token in the `Authorization` header:
 
 ```
-Authorization: Bearer ft_<your_token>
+Authorization: Bearer gtd_<your_token>
 ```
 
 Tokens are created by an admin in **Admin → Settings → API Tokens**. A token can be set to expire after a fixed number of days or never expire. The raw token is only shown once at creation — store it securely.
@@ -26,19 +26,19 @@ Tokens are created by an admin in **Admin → Settings → API Tokens**. A token
 
 ```bash
 curl https://your-server/api/v1/whoami \
-  -H "Authorization: Bearer ft_a1b2c3d4..."
+  -H "Authorization: Bearer gtd_a1b2c3d4..."
 ```
 
 ---
 
 ## Errors
 
-| Status | Meaning |
-|--------|---------|
-| `401` | Missing, invalid, or expired token |
-| `403` | Token owner lacks permission for that resource |
-| `404` | Resource not found |
-| `204` | Success with no body (DELETE) |
+| Status | Meaning                                        |
+| ------ | ---------------------------------------------- |
+| `401`  | Missing, invalid, or expired token             |
+| `403`  | Token owner lacks permission for that resource |
+| `404`  | Resource not found                             |
+| `204`  | Success with no body (DELETE)                  |
 
 Error responses follow this shape:
 
@@ -59,7 +59,7 @@ Returns information about the token owner.
 
 ```bash
 curl https://your-server/api/v1/whoami \
-  -H "Authorization: Bearer ft_..."
+  -H "Authorization: Bearer gtd_..."
 ```
 
 **Response**
@@ -81,7 +81,7 @@ Lists all projects (team inboxes) accessible to the token owner. Admins see all 
 
 ```bash
 curl https://your-server/api/v1/projects \
-  -H "Authorization: Bearer ft_..."
+  -H "Authorization: Bearer gtd_..."
 ```
 
 **Response**
@@ -112,24 +112,24 @@ Lists tasks. Defaults to the token owner's **personal inbox** when no `project_i
 
 **Query parameters**
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `project_id` | string | List tasks from this team inbox |
-| `status` | integer | Filter by flow step index (e.g. `0` = first step, `1` = second) |
-| `priority` | integer | Filter by priority: `0` none, `1` low, `2` medium, `3` urgent |
+| Param        | Type    | Description                                                     |
+| ------------ | ------- | --------------------------------------------------------------- |
+| `project_id` | string  | List tasks from this team inbox                                 |
+| `status`     | integer | Filter by flow step index (e.g. `0` = first step, `1` = second) |
+| `priority`   | integer | Filter by priority: `0` none, `1` low, `2` medium, `3` urgent   |
 
 **List personal inbox**
 
 ```bash
 curl "https://your-server/api/v1/tasks" \
-  -H "Authorization: Bearer ft_..."
+  -H "Authorization: Bearer gtd_..."
 ```
 
 **List tasks in a project, only in-progress and urgent**
 
 ```bash
 curl "https://your-server/api/v1/tasks?project_id=proj_abc123&status=1&priority=3" \
-  -H "Authorization: Bearer ft_..."
+  -H "Authorization: Bearer gtd_..."
 ```
 
 **Response**
@@ -171,7 +171,7 @@ Returns a single task by ID.
 
 ```bash
 curl "https://your-server/api/v1/tasks/todo_xyz789" \
-  -H "Authorization: Bearer ft_..."
+  -H "Authorization: Bearer gtd_..."
 ```
 
 **Response** — same shape as a single item from the list above.
@@ -184,19 +184,19 @@ Creates a new task.
 
 **Body fields**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `title` | string | Yes | Task title |
-| `description` | string | No | Longer description |
-| `project_id` | string | No | Team inbox ID. Omit to create in the personal inbox |
-| `due_date` | integer | No | Unix timestamp (seconds) |
-| `priority` | integer | No | `0` none · `1` low · `2` medium · `3` urgent |
+| Field         | Type    | Required | Description                                         |
+| ------------- | ------- | -------- | --------------------------------------------------- |
+| `title`       | string  | Yes      | Task title                                          |
+| `description` | string  | No       | Longer description                                  |
+| `project_id`  | string  | No       | Team inbox ID. Omit to create in the personal inbox |
+| `due_date`    | integer | No       | Unix timestamp (seconds)                            |
+| `priority`    | integer | No       | `0` none · `1` low · `2` medium · `3` urgent        |
 
 **Create a task in the personal inbox**
 
 ```bash
 curl -X POST "https://your-server/api/v1/tasks" \
-  -H "Authorization: Bearer ft_..." \
+  -H "Authorization: Bearer gtd_..." \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Buy coffee beans",
@@ -208,7 +208,7 @@ curl -X POST "https://your-server/api/v1/tasks" \
 
 ```bash
 curl -X POST "https://your-server/api/v1/tasks" \
-  -H "Authorization: Bearer ft_..." \
+  -H "Authorization: Bearer gtd_..." \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Fix login bug",
@@ -229,20 +229,20 @@ Updates one or more fields on an existing task. Only fields present in the body 
 
 **Body fields**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `title` | string | New title |
-| `description` | string | New description (send `""` to clear) |
-| `due_date` | integer \| null | Unix timestamp, or `null` to remove |
-| `priority` | integer | `0`–`3` |
-| `flow_step_index` | integer | Move to a specific step (0-based) |
-| `project_id` | string | Move task to a different team inbox |
+| Field             | Type            | Description                          |
+| ----------------- | --------------- | ------------------------------------ |
+| `title`           | string          | New title                            |
+| `description`     | string          | New description (send `""` to clear) |
+| `due_date`        | integer \| null | Unix timestamp, or `null` to remove  |
+| `priority`        | integer         | `0`–`3`                              |
+| `flow_step_index` | integer         | Move to a specific step (0-based)    |
+| `project_id`      | string          | Move task to a different team inbox  |
 
 **Mark a task as done (set to last step)**
 
 ```bash
 curl -X PATCH "https://your-server/api/v1/tasks/todo_xyz789" \
-  -H "Authorization: Bearer ft_..." \
+  -H "Authorization: Bearer gtd_..." \
   -H "Content-Type: application/json" \
   -d '{ "flow_step_index": 3 }'
 ```
@@ -251,7 +251,7 @@ curl -X PATCH "https://your-server/api/v1/tasks/todo_xyz789" \
 
 ```bash
 curl -X PATCH "https://your-server/api/v1/tasks/todo_xyz789" \
-  -H "Authorization: Bearer ft_..." \
+  -H "Authorization: Bearer gtd_..." \
   -H "Content-Type: application/json" \
   -d '{
     "priority": 1,
@@ -269,7 +269,7 @@ Permanently deletes a task and all its subtasks.
 
 ```bash
 curl -X DELETE "https://your-server/api/v1/tasks/todo_xyz789" \
-  -H "Authorization: Bearer ft_..."
+  -H "Authorization: Bearer gtd_..."
 ```
 
 **Response** — `204 No Content` on success.
@@ -280,11 +280,11 @@ curl -X DELETE "https://your-server/api/v1/tasks/todo_xyz789" \
 
 Steps are zero-indexed based on the project's `flow_steps` array. For the personal inbox, the steps are always:
 
-| Index | Label |
-|-------|-------|
-| `0` | New |
-| `1` | In Progress |
-| `2` | Done |
+| Index | Label       |
+| ----- | ----------- |
+| `0`   | New         |
+| `1`   | In Progress |
+| `2`   | Done        |
 
 For team inboxes, check the `flow_steps` array in `GET /api/v1/projects`. For example, if `flow_steps` is `["Backlog", "In Progress", "Review", "Done"]` then `flow_step_index: 2` means "Review".
 
@@ -332,7 +332,7 @@ date -j -f "%Y-%m-%d" "2025-05-01" +%s  # macOS
 import requests
 
 BASE = "https://your-server/api/v1"
-TOKEN = "ft_your_token_here"
+TOKEN = "gtd_your_token_here"
 HEADERS = {"Authorization": f"Bearer {TOKEN}"}
 
 # List urgent tasks across personal inbox
@@ -363,11 +363,11 @@ requests.delete(f"{BASE}/tasks/{new_task['id']}", headers=HEADERS)
 
 Tokens are managed in the web UI under **Admin → Settings → API Tokens**, or via the admin API (requires a logged-in admin session, not a token):
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/admin/api-tokens` | List all tokens |
-| `POST` | `/api/admin/api-tokens` | Create a token |
-| `DELETE` | `/api/admin/api-tokens/:id` | Revoke a token |
+| Method   | Path                        | Description     |
+| -------- | --------------------------- | --------------- |
+| `GET`    | `/api/admin/api-tokens`     | List all tokens |
+| `POST`   | `/api/admin/api-tokens`     | Create a token  |
+| `DELETE` | `/api/admin/api-tokens/:id` | Revoke a token  |
 
 **Create token via API**
 
@@ -393,6 +393,6 @@ curl -X POST "https://your-server/api/admin/api-tokens" \
   "created_at": 1745884800,
   "last_used_at": null,
   "created_by_name": "Alice",
-  "token": "ft_a1b2c3d4e5f6..."
+  "token": "gtd_a1b2c3d4e5f6..."
 }
 ```
