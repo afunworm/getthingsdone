@@ -1074,25 +1074,19 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
     /* History */
-    .hist-section { border-top: 1px solid var(--surface-border); padding-top: 0; }
+    .hist-section { border-top: 1px solid var(--surface-border); }
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
     .hist-open { transform: rotate(180deg); }
-    .hist-list { display: flex; flex-direction: column; gap: 0; margin-top: 4px; max-height: 280px; overflow-y: auto; }
-    .hist-row {
-      display: flex; flex-direction: column; gap: 2px;
-      padding: 6px 0; border-bottom: 1px solid var(--surface-border);
-      &:last-child { border-bottom: none; }
-    }
-    .hist-meta { display: flex; gap: 8px; align-items: center; }
+    .hist-list { margin-top: 4px; max-height: 280px; overflow-y: auto; }
+    .hist-row { padding: 5px 0; border-bottom: 1px solid var(--surface-border); &:last-child { border-bottom: none; } }
+    .hist-meta { display: flex; gap: 8px; margin-bottom: 2px; }
     .hist-who { font-size: 11px; font-weight: 600; color: var(--text-primary); }
-    .hist-when { font-size: 11px; color: var(--text-muted); }
+    .hist-when,.hist-arrow { font-size: 11px; color: var(--text-muted); }
     .hist-change { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
     .hist-field { font-size: 12px; font-weight: 500; color: var(--text-secondary); min-width: 80px; }
-    .hist-val { font-size: 12px; color: var(--text-primary); }
+    .hist-val,.hist-new { font-size: 12px; color: var(--text-primary); }
     .hist-old { font-size: 12px; color: var(--text-muted); text-decoration: line-through; }
-    .hist-new { font-size: 12px; color: var(--text-primary); }
-    .hist-arrow { font-size: 11px; color: var(--text-muted); }
     .hist-empty { font-size: 12px; color: var(--text-muted); margin: 6px 0; }
     /* Attachment grid */
     .att-grid {
