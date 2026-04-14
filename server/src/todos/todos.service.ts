@@ -440,9 +440,16 @@ export class TodosService {
       next.setDate(next.getDate() + rule.interval * 7);
     } else if (rule.type === 'monthly') {
       const originalDay = base.getDate();
-      next.setDate(1); // avoid overflow when moving month
+      next.setDate(1);
       next.setMonth(next.getMonth() + rule.interval);
-      // clamp to last day of the target month
+      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(originalDay, daysInMonth));
+    } else if (rule.type === 'yearly') {
+      const originalDay = base.getDate();
+      const originalMonth = base.getMonth();
+      next.setDate(1);
+      next.setFullYear(next.getFullYear() + rule.interval);
+      next.setMonth(originalMonth);
       const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
       next.setDate(Math.min(originalDay, daysInMonth));
     }

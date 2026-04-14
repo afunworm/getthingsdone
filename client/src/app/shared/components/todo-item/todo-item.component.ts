@@ -196,6 +196,7 @@ export interface SubtaskDroppedEvent {
                       <option value="daily">days</option>
                       <option value="weekly">weeks</option>
                       <option value="monthly">months</option>
+                      <option value="yearly">years</option>
                     </select>
                   </div>
                 }
@@ -742,7 +743,7 @@ export class TodoItemComponent implements OnChanges {
   schDueDate = '';
   schRecurring = false;
   schInterval = 1;
-  schType: 'daily' | 'weekly' | 'monthly' = 'weekly';
+  schType: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'weekly';
 
   prioritySvc    = inject(PriorityService);
   private sanitizer = inject(DomSanitizer);

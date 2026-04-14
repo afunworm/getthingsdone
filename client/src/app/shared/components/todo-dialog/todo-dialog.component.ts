@@ -206,6 +206,7 @@ const DEFAULT_STEPS: StepDef[] = [
                 <option value="daily">Days</option>
                 <option value="weekly">Weeks</option>
                 <option value="monthly">Months</option>
+                <option value="yearly">Years</option>
               </select>
             }
           </div>
@@ -1250,13 +1251,13 @@ export class TodoDialogComponent implements OnInit {
   schedDueDate  = signal('');
   schedRecurring = signal(false);
   schedInterval  = signal(1);
-  schedType      = signal<'daily' | 'weekly' | 'monthly'>('weekly');
+  schedType      = signal<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
 
   // Saved baseline — used to detect dirty state and to cancel
   private savedDueDate   = '';
   private savedRecurring = false;
   private savedInterval  = 1;
-  private savedType: 'daily' | 'weekly' | 'monthly' = 'weekly';
+  private savedType: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'weekly';
 
   nextOccurrences = computed(() => {
     if (!this.schedRecurring() || !this.schedDueDate()) return [];
@@ -1271,6 +1272,12 @@ export class TodoDialogComponent implements OnInit {
         next.setDate(next.getDate() + interval);
       } else if (type === 'weekly') {
         next.setDate(next.getDate() + interval * 7);
+      } else if (type === 'yearly') {
+        next.setDate(1);
+        next.setFullYear(next.getFullYear() + interval);
+        next.setMonth(cur.getMonth());
+        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(originalDay, daysInMonth));
       } else {
         next.setDate(1);
         next.setMonth(next.getMonth() + interval);
@@ -1299,7 +1306,7 @@ export class TodoDialogComponent implements OnInit {
     dueDateStr: '',
     isRecurring: false,
     recurrenceInterval: 1,
-    recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly',
+    recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
     createAssignees: { users: [] as { id: string; name: string }[], teams: [] as { id: string; name: string }[] },
     createSubtasks: [] as string[],
   };
@@ -1360,7 +1367,8 @@ export class TodoDialogComponent implements OnInit {
   get recurrenceLabel(): string {
     const r = this.todo.recurrence_rule;
     if (!r) return 'Recurring';
-    return `Every ${r.interval} ${r.type === 'daily' ? 'day' : r.type === 'weekly' ? 'week' : 'month'}${r.interval !== 1 ? 's' : ''}`;
+    const unit = r.type === 'daily' ? 'day' : r.type === 'weekly' ? 'week' : r.type === 'yearly' ? 'year' : 'month';
+    return `Every ${r.interval} ${unit}${r.interval !== 1 ? 's' : ''}`;
   }
 
   get canChangeCreator(): boolean {
