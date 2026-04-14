@@ -322,36 +322,46 @@ const DEFAULT_STEPS: StepDef[] = [
             <div class="section-hdr">
               <span class="section-label">Schedule</span>
             </div>
-            <div class="sch-grid">
-              <div class="sch-row">
-                <span class="material-icons sch-icon">event</span>
-                <input type="date" class="sch-date-input"
-                  [ngModel]="schedDueDate()" (ngModelChange)="schedDueDate.set($event)" />
-                @if (schedDueDate()) {
-                  <button class="sch-clear" (click)="schedDueDate.set('')" title="Clear due date">
-                    <span class="material-icons" style="font-size:12px">close</span>
-                  </button>
-                }
+            <div class="sch-body">
+              <div class="sch-grid">
+                <div class="sch-row">
+                  <span class="material-icons sch-icon">event</span>
+                  <input type="date" class="sch-date-input"
+                    [ngModel]="schedDueDate()" (ngModelChange)="schedDueDate.set($event)" />
+                  @if (schedDueDate()) {
+                    <button class="sch-clear" (click)="schedDueDate.set('')" title="Clear due date">
+                      <span class="material-icons" style="font-size:12px">close</span>
+                    </button>
+                  }
+                </div>
+                <div class="sch-row">
+                  <span class="material-icons sch-icon">repeat</span>
+                  <label class="sch-toggle-label">
+                    <input type="checkbox"
+                      [ngModel]="schedRecurring()" (ngModelChange)="schedRecurring.set($event)" />
+                    Recurring
+                  </label>
+                  @if (schedRecurring()) {
+                    <span class="sch-every">every</span>
+                    <input type="number" class="sch-num" min="1"
+                      [ngModel]="schedInterval()" (ngModelChange)="schedInterval.set(+$event)" />
+                    <select class="sch-type"
+                      [ngModel]="schedType()" (ngModelChange)="schedType.set($event)">
+                      <option value="daily">days</option>
+                      <option value="weekly">weeks</option>
+                      <option value="monthly">months</option>
+                    </select>
+                  }
+                </div>
               </div>
-              <div class="sch-row">
-                <span class="material-icons sch-icon">repeat</span>
-                <label class="sch-toggle-label">
-                  <input type="checkbox"
-                    [ngModel]="schedRecurring()" (ngModelChange)="schedRecurring.set($event)" />
-                  Recurring
-                </label>
-                @if (schedRecurring()) {
-                  <span class="sch-every">every</span>
-                  <input type="number" class="sch-num" min="1"
-                    [ngModel]="schedInterval()" (ngModelChange)="schedInterval.set(+$event)" />
-                  <select class="sch-type"
-                    [ngModel]="schedType()" (ngModelChange)="schedType.set($event)">
-                    <option value="daily">days</option>
-                    <option value="weekly">weeks</option>
-                    <option value="monthly">months</option>
-                  </select>
-                }
-              </div>
+              @if (nextOccurrences().length) {
+                <div class="sch-occurrences">
+                  <span class="sch-occ-label">Next occurrences</span>
+                  @for (d of nextOccurrences(); track d) {
+                    <span class="sch-occ-date">{{ d }}</span>
+                  }
+                </div>
+              }
             </div>
             @if (schedRecurring() && !schedDueDate()) {
               <p class="recur-warn" style="margin-top:6px">
@@ -814,7 +824,19 @@ const DEFAULT_STEPS: StepDef[] = [
     .btn-sm { padding: 4px 12px; font-size: 12px; }
 
     /* Schedule section */
-    .sch-grid { display: flex; flex-direction: column; gap: 6px; }
+    .sch-body { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .sch-grid { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+    .sch-occurrences {
+      display: flex; flex-direction: column; gap: 3px;
+      border-left: 2px solid var(--surface-border); padding-left: 12px;
+    }
+    .sch-occ-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--text-muted); margin-bottom: 2px;
+    }
+    .sch-occ-date {
+      font-size: 12px; color: var(--text-secondary);
+    }
     .sch-row {
       display: flex; align-items: center; gap: 8px;
     }
@@ -1235,6 +1257,31 @@ export class TodoDialogComponent implements OnInit {
   private savedRecurring = false;
   private savedInterval  = 1;
   private savedType: 'daily' | 'weekly' | 'monthly' = 'weekly';
+
+  nextOccurrences = computed(() => {
+    if (!this.schedRecurring() || !this.schedDueDate()) return [];
+    const interval = this.schedInterval();
+    const type = this.schedType();
+    const dates: string[] = [];
+    let cur = new Date(this.schedDueDate() + 'T00:00:00');
+    for (let i = 0; i < 3; i++) {
+      const originalDay = cur.getDate();
+      const next = new Date(cur);
+      if (type === 'daily') {
+        next.setDate(next.getDate() + interval);
+      } else if (type === 'weekly') {
+        next.setDate(next.getDate() + interval * 7);
+      } else {
+        next.setDate(1);
+        next.setMonth(next.getMonth() + interval);
+        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(originalDay, daysInMonth));
+      }
+      dates.push(next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+      cur = next;
+    }
+    return dates;
+  });
 
   schedDirty = computed(() =>
     this.schedDueDate()   !== this.savedDueDate   ||

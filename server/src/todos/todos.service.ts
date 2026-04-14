@@ -432,6 +432,23 @@ export class TodosService {
     return typeof raw === 'string' ? raw : (raw.label ?? 'Unknown');
   }
 
+  static nextRecurrenceDate(base: Date, rule: { type: string; interval: number }): Date {
+    const next = new Date(base);
+    if (rule.type === 'daily') {
+      next.setDate(next.getDate() + rule.interval);
+    } else if (rule.type === 'weekly') {
+      next.setDate(next.getDate() + rule.interval * 7);
+    } else if (rule.type === 'monthly') {
+      const originalDay = base.getDate();
+      next.setDate(1); // avoid overflow when moving month
+      next.setMonth(next.getMonth() + rule.interval);
+      // clamp to last day of the target month
+      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(originalDay, daysInMonth));
+    }
+    return next;
+  }
+
   private spawnNextRecurrence(todo: any, userId: string) {
     // The cron may have already created a child for this task — don't duplicate.
     const alreadySpawned = this.db
@@ -440,12 +457,8 @@ export class TodosService {
     if (alreadySpawned) return;
 
     const rule = JSON.parse(todo.recurrence_rule);
-    const base = todo.due_date ? todo.due_date * 1000 : Date.now();
-    const next = new Date(base);
-
-    if (rule.type === 'daily') next.setDate(next.getDate() + rule.interval);
-    else if (rule.type === 'weekly') next.setDate(next.getDate() + rule.interval * 7);
-    else if (rule.type === 'monthly') next.setMonth(next.getMonth() + rule.interval);
+    const base = todo.due_date ? new Date(todo.due_date * 1000) : new Date();
+    const next = TodosService.nextRecurrenceDate(base, rule);
 
     const id = uuidv4();
     this.db.prepare(`
