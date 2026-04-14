@@ -31,9 +31,11 @@ export class NotificationListenerService {
 
   @OnEvent('todo.created')
   onTodoCreated(event: TodoCreatedEvent) {
-    // Always push to the creator's own stream so their UI refreshes immediately.
+    // Push a ui_refresh signal to the creator's stream so their view reloads
+    // immediately. This is separate from the notification fan-out below and
+    // intentionally uses a distinct type so the client skips bell/toast/badge for it.
     this.notifications.pushToUser(event.callerId, {
-      type:      'task_created',
+      type:      'ui_refresh',
       title:     '',
       body:      '',
       todoId:    event.todo.id,
@@ -47,10 +49,15 @@ export class NotificationListenerService {
     // For UI-created tasks, exclude the creator (they know what they just did).
     const excludeId = event.todo.created_via_token_id ? undefined : event.callerId;
 
+    // Show the token name as the actor for API-created tasks.
+    const actor = event.todo.created_via_token_id
+      ? `"${event.todo.created_via_token_name ?? 'API'}" token`
+      : this.actorName(event.callerId);
+
     this.notifications.notifyProjectMembers(event.todo.project_id, 'on_task_created', {
       type:      'task_created',
       title:     `New task: ${event.todo.title}`,
-      body:      `Created by ${this.actorName(event.callerId)}`,
+      body:      `Created by ${actor}`,
       link:      `/projects/${event.todo.project_id}`,
       todoId:    event.todo.id,
       projectId: event.todo.project_id,

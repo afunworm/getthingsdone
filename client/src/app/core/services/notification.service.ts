@@ -140,6 +140,13 @@ export class NotificationService {
     this.es.onmessage = (ev) => {
       try {
         const payload = JSON.parse(ev.data);
+
+        // ui_refresh is a silent data-refresh signal — no bell entry, no toast, no badge.
+        if (payload.type === 'ui_refresh') {
+          this.refresh$.next(payload);
+          return;
+        }
+
         // Prepend a fake notification row for immediate UI update
         const fake: AppNotification = {
           id: `tmp-${Date.now()}`,
