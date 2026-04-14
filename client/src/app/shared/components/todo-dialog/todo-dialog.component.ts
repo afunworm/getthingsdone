@@ -190,9 +190,24 @@ const DEFAULT_STEPS: StepDef[] = [
             <label class="field-label">Description</label>
             <textarea class="field-textarea" [(ngModel)]="form.description" rows="3" placeholder="Optional"></textarea>
           </div>
+          <div class="create-row-2">
+            <div class="field" style="flex:1">
+              <label class="field-label">Due date</label>
+              <input class="field-input" type="date" [(ngModel)]="form.dueDateStr" />
+            </div>
+            <div class="field" style="flex:1">
+              <label class="field-label">Priority</label>
+              <select class="field-select" [(ngModel)]="form.priority">
+                <option [ngValue]="0">None</option>
+                @for (lvl of prioritySvc.levels(); track lvl.value) {
+                  <option [ngValue]="lvl.value">{{ lvl.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
           <div class="field">
-            <label class="field-label">Due date</label>
-            <input class="field-input" type="date" [(ngModel)]="form.dueDateStr" />
+            <label class="field-label">Reminder</label>
+            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />
           </div>
           <div class="recurrence-row">
             <label class="checkbox-label">
@@ -753,6 +768,7 @@ const DEFAULT_STEPS: StepDef[] = [
 
     /* Create form fields */
     .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .create-row-2 { display: flex; gap: 12px; }
     .recurrence-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
     .recur-warn {
       display: flex; align-items: center; gap: 5px; margin: -4px 0 10px;
@@ -1305,6 +1321,8 @@ export class TodoDialogComponent implements OnInit {
     title: '',
     description: '',
     dueDateStr: '',
+    priority: 0,
+    reminderDate: '',
     isRecurring: false,
     recurrenceInterval: 1,
     recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -1425,7 +1443,10 @@ export class TodoDialogComponent implements OnInit {
     const remindAt = Math.floor((Date.now() + ms) / 1000);
     const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
     this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label })
-      .subscribe((r) => this.reminders.update((list) => [...list, r]));
+      .subscribe((r) => {
+        this.reminders.update((list) => [...list, r]);
+        this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
+      });
   }
 
   addCustomReminder(): void {
@@ -1435,14 +1456,16 @@ export class TodoDialogComponent implements OnInit {
     this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt })
       .subscribe((r) => {
         this.reminders.update((list) => [...list, r]);
+        this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
         this.customReminderDate = '';
       });
   }
 
   deleteReminder(id: string): void {
-    this.api.delete(`/notifications/reminders/item/${id}`).subscribe(() =>
-      this.reminders.update((list) => list.filter((r) => r.id !== id)),
-    );
+    this.api.delete(`/notifications/reminders/item/${id}`).subscribe(() => {
+      this.reminders.update((list) => list.filter((r) => r.id !== id));
+      this.todo.reminder_count = Math.max(0, (this.todo.reminder_count ?? 1) - 1);
+    });
   }
 
   formatReminder(r: any): string {
@@ -1789,6 +1812,7 @@ subNextStepLabel(sub: any): string {
       recurrenceRule: this.form.isRecurring
         ? { type: this.form.recurrenceType, interval: this.form.recurrenceInterval }
         : undefined,
+      priority: this.form.priority || undefined,
     };
     if (this.data.projectId) body.projectId = this.data.projectId;
     const url = this.data.isInbox ? '/inbox' : '/todos';
@@ -1804,6 +1828,11 @@ subNextStepLabel(sub: any): string {
           this.api.post<any>('/todos', { title, projectId: this.data.projectId, parentTodoId: todo.id }),
         ),
       ];
+      if (this.form.reminderDate) {
+        const remindAt = Math.floor(new Date(this.form.reminderDate).getTime() / 1000);
+        followUp.push(this.api.post<any>(`/notifications/reminders/${todo.id}`, { remindAt }));
+        todo.reminder_count = (todo.reminder_count ?? 0) + 1;
+      }
       if (followUp.length === 0) {
         this.dialogRef.close(todo);
         return;

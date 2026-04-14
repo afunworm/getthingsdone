@@ -898,10 +898,7 @@ export class TodoItemComponent implements OnChanges {
   setCustomReminder(): void {
     if (!this.customRemindAt) return;
     const remindAt = Math.floor(new Date(this.customRemindAt).getTime() / 1000);
-    const d = new Date(this.customRemindAt);
-    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
-      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    this.api.post(`/notifications/reminders/${this.todo.id}`, { remindAt, label }).subscribe(() => {
+    this.api.post(`/notifications/reminders/${this.todo.id}`, { remindAt }).subscribe(() => {
       this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
     });
     this.reminderOpen.set(false);
