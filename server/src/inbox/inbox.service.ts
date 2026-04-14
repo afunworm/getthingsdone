@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DatabaseService } from '../database/database.service';
+import { TodoCreatedEvent } from '../todos/todo.events';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class InboxService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   findAll(userId: string, includeDone = false) {
     const doneFilter = includeDone ? '' : 'AND t.flow_step_index < 2';
@@ -91,11 +96,13 @@ export class InboxService {
       dto.apiTokenId ?? null,
       dto.priority ?? 0,
     );
-    return this.db.prepare(`
+    const created = this.db.prepare(`
       SELECT t.*, u.name AS created_by_name
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
       WHERE t.id = ?
     `).get(id);
+    this.eventEmitter.emit('todo.created', new TodoCreatedEvent(created, userId));
+    return created;
   }
 }

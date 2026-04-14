@@ -31,8 +31,7 @@ export class NotificationListenerService {
 
   @OnEvent('todo.created')
   onTodoCreated(event: TodoCreatedEvent) {
-    // Always push to the creator's own stream so their UI refreshes immediately,
-    // even when the notification fan-out excludes them (e.g. API-created tasks).
+    // Always push to the creator's own stream so their UI refreshes immediately.
     this.notifications.pushToUser(event.callerId, {
       type:      'task_created',
       title:     '',
@@ -42,6 +41,12 @@ export class NotificationListenerService {
     });
 
     if (!event.todo.project_id) return;
+
+    // For API-created tasks, notify ALL members including the token owner —
+    // the automation acted on their behalf, so they still want to know.
+    // For UI-created tasks, exclude the creator (they know what they just did).
+    const excludeId = event.todo.created_via_token_id ? undefined : event.callerId;
+
     this.notifications.notifyProjectMembers(event.todo.project_id, 'on_task_created', {
       type:      'task_created',
       title:     `New task: ${event.todo.title}`,
@@ -49,7 +54,7 @@ export class NotificationListenerService {
       link:      `/projects/${event.todo.project_id}`,
       todoId:    event.todo.id,
       projectId: event.todo.project_id,
-    }, event.callerId);
+    }, excludeId);
   }
 
   @OnEvent('todo.updated')
