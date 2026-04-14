@@ -3,6 +3,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Dialog } from '@angular/cdk/dialog';
 import { ApiService } from '../../../core/services/api.service';
 import { DragStateService } from '../../../core/services/drag-state.service';
@@ -117,7 +118,7 @@ export interface SubtaskDroppedEvent {
                 </div>
               }
               @if (todo.description) {
-                <div class="todo-desc">{{ todo.description }}</div>
+                <div class="todo-desc" [innerHTML]="sanitizeHtml(todo.description)"></div>
               }
             </div>
           </div>
@@ -744,6 +745,11 @@ export class TodoItemComponent implements OnChanges {
   schType: 'daily' | 'weekly' | 'monthly' = 'weekly';
 
   prioritySvc    = inject(PriorityService);
+  private sanitizer = inject(DomSanitizer);
+
+  sanitizeHtml(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
 
   // Priority popover
   priorityOpen   = signal(false);
