@@ -611,7 +611,14 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
         this.todos.update((list) => list
           .filter((t) => t.id !== todo.id)
           .map((t) => ({ ...t, subtodos: t.subtodos?.filter((s: any) => s.id !== todo.id) })));
+        if (!todo.parent_todo_id) this.store.adjustCounts(this.id, todo.flow_step_index === 0 ? -1 : 0, -1);
       } else {
+        if (result.flow_step_index !== todo.flow_step_index && !todo.parent_todo_id) {
+          const wasNew = todo.flow_step_index === 0;
+          const isNew  = result.flow_step_index === 0;
+          if (wasNew && !isNew) this.store.adjustCounts(this.id, -1, 0);
+          else if (!wasNew && isNew) this.store.adjustCounts(this.id, 1, 0);
+        }
         this.todos.update((list) => list.map((t) => {
           if (t.id === result.id) return result;
           if (t.subtodos?.some((s: any) => s.id === result.id)) {

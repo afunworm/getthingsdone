@@ -519,8 +519,15 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
     });
     ref.closed.subscribe((result: any) => {
       if (result === 'deleted') {
+        if (todo.project_id) this.store.adjustCounts(todo.project_id, todo.flow_step_index === 0 ? -1 : 0, -1);
         this.allTodos.update((list) => list.filter((i) => i.todo.id !== todo.id));
       } else if (result) {
+        if (result.project_id && result.flow_step_index !== todo.flow_step_index) {
+          const wasNew = todo.flow_step_index === 0;
+          const isNew  = result.flow_step_index === 0;
+          if (wasNew && !isNew) this.store.adjustCounts(result.project_id, -1, 0);
+          else if (!wasNew && isNew) this.store.adjustCounts(result.project_id, 1, 0);
+        }
         this.mergeTodo(result);
       }
     });

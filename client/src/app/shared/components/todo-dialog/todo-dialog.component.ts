@@ -664,9 +664,9 @@ const DEFAULT_STEPS: StepDef[] = [
                     @if (h.field === 'created') {
                       <span class="hist-val">{{ h.new_value }}</span>
                     } @else {
-                      @if (h.old_value) { <span class="hist-old">{{ h.old_value }}</span> }
+                      @if (h.old_value) { <span class="hist-old">{{ formatHistValue(h.field, h.old_value) }}</span> }
                       @if (h.old_value && h.new_value) { <span class="hist-arrow">→</span> }
-                      @if (h.new_value) { <span class="hist-new">{{ h.new_value }}</span> }
+                      @if (h.new_value) { <span class="hist-new">{{ formatHistValue(h.field, h.new_value) }}</span> }
                     }
                   </span>
                 </div>
@@ -1059,7 +1059,7 @@ const DEFAULT_STEPS: StepDef[] = [
       .reminder-row:hover & { opacity: 1; }
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
-    .hist-section { border-top: 1px solid var(--surface-border); }
+    .hist-section { border-top: 1px solid var(--surface-border); padding: 10px 14px; }
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
     .hist-open { transform: rotate(180deg); }
@@ -1917,5 +1917,16 @@ subNextStepLabel(sub: any): string {
       team_unassigned:  'Team unassigned',
     };
     return map[field] ?? field;
+  }
+
+  formatHistValue(field: string, value: string): string {
+    if (field === 'recurrence_rule') {
+      try {
+        const r = JSON.parse(value);
+        const unit = r.type === 'daily' ? 'day' : r.type === 'weekly' ? 'week' : r.type === 'yearly' ? 'year' : 'month';
+        return `Every ${r.interval} ${unit}${r.interval !== 1 ? 's' : ''}`;
+      } catch { return value; }
+    }
+    return value;
   }
 }

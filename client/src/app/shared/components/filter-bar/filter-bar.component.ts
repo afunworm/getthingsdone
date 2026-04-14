@@ -43,18 +43,26 @@ const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
   template: `
     <div class="filter-bar">
       <!-- Filter chips -->
-      <button class="chip" [class.active]="state().assignedByMe" (click)="toggle('assignedByMe')" title="Tasks I created and assigned to others">
-        <span class="material-icons" style="font-size:12px">assignment_ind</span>Created by me
-      </button>
-      <button class="chip" [class.active]="state().overdue" (click)="toggle('overdue')" title="Past due date, not completed">
-        <span class="material-icons" style="font-size:12px">schedule</span>Overdue
-      </button>
-      <button class="chip" [class.active]="state().comingUp" (click)="toggle('comingUp')" title="Has a due date that hasn't passed yet">
-        <span class="material-icons" style="font-size:12px">event_available</span>Coming Up
-      </button>
-      <button class="chip" [class.active]="state().recurring" (click)="toggle('recurring')" title="Recurring tasks only">
-        <span class="material-icons" style="font-size:12px">repeat</span>Recurring
-      </button>
+      @if (!hideFilters.includes('assignedByMe')) {
+        <button class="chip" [class.active]="state().assignedByMe" (click)="toggle('assignedByMe')" title="Tasks I created and assigned to others">
+          <span class="material-icons" style="font-size:12px">assignment_ind</span>Created by me
+        </button>
+      }
+      @if (!hideFilters.includes('overdue')) {
+        <button class="chip" [class.active]="state().overdue" (click)="toggle('overdue')" title="Past due date, not completed">
+          <span class="material-icons" style="font-size:12px">schedule</span>Overdue
+        </button>
+      }
+      @if (!hideFilters.includes('comingUp')) {
+        <button class="chip" [class.active]="state().comingUp" (click)="toggle('comingUp')" title="Has a due date that hasn't passed yet">
+          <span class="material-icons" style="font-size:12px">event_available</span>Coming Up
+        </button>
+      }
+      @if (!hideFilters.includes('recurring')) {
+        <button class="chip" [class.active]="state().recurring" (click)="toggle('recurring')" title="Recurring tasks only">
+          <span class="material-icons" style="font-size:12px">repeat</span>Recurring
+        </button>
+      }
 
       <!-- Saved view quick-access buttons -->
       @if (views().length) {
@@ -234,6 +242,7 @@ export class FilterBarComponent {
 
   @Input({ required: true }) settingsKey!: string;
   @Input({ required: true }) userId!: string;
+  @Input() hideFilters: string[] = [];
   @Output() stateChange = new EventEmitter<FilterSortState>();
 
   @ViewChild('nameInput') nameInput?: ElementRef<HTMLInputElement>;
