@@ -21,6 +21,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/all-inboxes/all-inboxes.component').then((m) => m.AllInboxesComponent),
       },
       {
+        path: 'today',
+        loadComponent: () => import('./features/today/today.component').then((m) => m.TodayComponent),
+      },
+      {
         path: 'projects',
         loadComponent: () => import('./features/projects/project-list/project-list.component').then((m) => m.ProjectListComponent),
       },

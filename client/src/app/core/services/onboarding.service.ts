@@ -6,9 +6,9 @@ import { InboxStoreService } from './inbox-store.service';
 
 // Step indices that trigger side-effects on Next
 const STEP_ANIMATE_TASKS    = 1;   // step 1  = My Inbox sidebar → navigate to /inbox + animate tasks on Next
-const STEP_BEFORE_SETTINGS  = 21;  // step 21 = Settings link → navigate to /settings on Next
-const STEP_BEFORE_NOTIF_TAB = 23;  // step 23 = Reminder row → click Notifications tab on Next
-const STEP_BEFORE_RESTART   = 24;  // step 24 = Notifications → switch to General tab on Next
+const STEP_BEFORE_SETTINGS  = 22;  // step 22 = Settings link → navigate to /settings on Next
+const STEP_BEFORE_NOTIF_TAB = 24;  // step 24 = Reminder row → click Notifications tab on Next
+const STEP_BEFORE_RESTART   = 25;  // step 25 = Notifications → switch to General tab on Next
 
 @Injectable({ providedIn: 'root' })
 export class OnboardingService {
@@ -480,7 +480,21 @@ export class OnboardingService {
         },
       },
 
-      // ── 20: New Inbox ─────────────────────────────────────────
+      // ── 20: Today's Tasks ─────────────────────────────────────
+      {
+        element: '#tour-today',
+        popover: {
+          title: "Today's Tasks",
+          description: `
+            A focused view of everything due <strong>today or earlier</strong> across all your inboxes.
+            Use it each morning to see exactly what needs your attention right now.
+          `,
+          side: 'right',
+          align: 'start',
+        },
+      },
+
+      // ── 21: New Inbox ─────────────────────────────────────────
       {
         element: '#tour-new-inbox',
         popover: {
@@ -494,7 +508,7 @@ export class OnboardingService {
         },
       },
 
-      // ── 21: Settings link (navigate to /settings on Next) ─────
+      // ── 22: Settings link (navigate to /settings on Next) ─────
       {
         element: '#tour-settings-link',
         popover: {
@@ -510,7 +524,7 @@ export class OnboardingService {
         },
       },
 
-      // ── 22: Timezone ──────────────────────────────────────────
+      // ── 23: Timezone ──────────────────────────────────────────
       {
         element: '#tour-timezone',
         popover: {
@@ -525,7 +539,7 @@ export class OnboardingService {
         },
       },
 
-      // ── 23: Reminder time (click Notifications tab on Next) ───
+      // ── 24: Reminder time (click Notifications tab on Next) ───
       {
         element: '#tour-reminder',
         popover: {
@@ -540,7 +554,7 @@ export class OnboardingService {
         },
       },
 
-      // ── 24: Notifications ─────────────────────────────────────
+      // ── 25: Notifications ─────────────────────────────────────
       {
         element: '#tour-notifications',
         popover: {
@@ -556,7 +570,7 @@ export class OnboardingService {
         },
       },
 
-      // ── 25: Restart button in Settings General (final) ────────
+      // ── 26: Restart button in Settings General (final) ────────
       {
         element: '#tour-restart-btn',
         popover: {

@@ -576,6 +576,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
     this.api.post<any>('/todos', { title, projectId: this.id }).subscribe((todo) => {
       this.todos.update((list) => [...list, todo]);
       this.quickTitle = '';
+      this.store.adjustCounts(this.id, 1, 1);
     });
   }
 

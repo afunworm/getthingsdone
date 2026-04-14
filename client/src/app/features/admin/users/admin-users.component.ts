@@ -56,10 +56,11 @@ import { AuthService } from '../../../core/auth/auth.service';
     .page { padding: 20px 24px; }
     h2 { margin: 0 0 14px; font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
-    .user-table { display: flex; flex-direction: column; border: 1px solid var(--surface-border); border-radius: 10px; overflow: hidden; }
+    .user-table { display: flex; flex-direction: column; border: 1px solid var(--surface-border); border-radius: 10px; }
     .table-header {
       display: grid; grid-template-columns: 1fr 100px 48px;
       padding: 8px 14px; background: var(--surface-hover);
+      border-radius: 10px 10px 0 0;
       font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .4px; color: var(--text-muted);
     }
@@ -68,6 +69,7 @@ import { AuthService } from '../../../core/auth/auth.service';
       align-items: center; padding: 8px 14px;
       border-top: 1px solid var(--surface-border);
       background: var(--surface-card);
+      &:last-child { border-radius: 0 0 10px 10px; }
     }
     .user-cell { display: flex; align-items: center; gap: 8px; }
     .user-avatar {

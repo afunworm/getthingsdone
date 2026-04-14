@@ -66,6 +66,12 @@ import { APP_VERSION } from '../../version';
             </a>
           </div>
 
+          <!-- Today's Tasks -->
+          <a id="tour-today" class="nav-item" routerLink="/today" routerLinkActive="nav-active">
+            <span class="material-icons nav-icon">today</span>
+            <span>Today's Tasks</span>
+          </a>
+
           <div id="tour-inboxes-section">
             @if ((store.inboxes()?.length ?? 0) > 0) {
               <div class="nav-section">Inboxes</div>
