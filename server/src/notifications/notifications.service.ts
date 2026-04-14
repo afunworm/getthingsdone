@@ -253,7 +253,13 @@ export class NotificationsService {
       this.streams.get(userId)?.next(payload);
     }
 
-    if (!skipEmail && settings.notify_email) {
+    // For direct assignment notifications, always use global email preference —
+    // a per-inbox email mute should not suppress "you were assigned" emails.
+    const emailSettings = type === 'on_task_assigned'
+      ? this.getEffectiveSettings(userId, null)
+      : settings;
+
+    if (!skipEmail && emailSettings.notify_email) {
       const user = this.db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as any;
       if (user?.email) {
         this.mail.send(user.email, payload.title, this.buildEmailHtml(payload)).catch(() => {});

@@ -21,7 +21,7 @@ const EVENT_ROWS: SettingRow[] = [
   { key: 'on_task_created',  label: 'Task created',           description: 'When a new task is added to a project you belong to',      icon: 'add_circle_outline',  type: 'toggle' },
   { key: 'on_task_deleted',  label: 'Task deleted',           description: 'When a task is removed from a project',                    icon: 'delete_outline',      type: 'toggle' },
   { key: 'on_task_updated',  label: 'Task updated',           description: "When a task's title, description, or due date changes",    icon: 'edit',                type: 'toggle' },
-  { key: 'on_task_assigned', label: 'Task assigned',          description: 'When a task is assigned or unassigned to you or your department', icon: 'person_add', type: 'toggle' },
+  { key: 'on_task_assigned', label: 'Task assigned',          description: 'When a task is assigned or unassigned to you or your department. Email for this always follows your global email setting, not per-inbox overrides.', icon: 'person_add', type: 'toggle' },
   { key: 'on_task_comment',  label: 'Comments',               description: 'When someone leaves a comment on a task',                  icon: 'chat_bubble_outline', type: 'toggle' },
   { key: 'on_upcoming',     label: 'Upcoming task reminders', description: "Get notified before a task's due date",                   icon: 'schedule',           type: 'toggle' },
   { key: 'on_past_due',     label: 'Past due reminders',     description: 'Get reminded daily about overdue tasks',                   icon: 'warning_amber',      type: 'toggle' },

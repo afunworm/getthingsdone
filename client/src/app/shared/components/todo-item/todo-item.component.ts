@@ -198,8 +198,14 @@ export interface SubtaskDroppedEvent {
                     </select>
                   </div>
                 }
+                @if (schRecurring && !schDueDate) {
+                  <p class="sch-recur-warn">
+                    <span class="material-icons" style="font-size:12px">warning</span>
+                    Due date required for recurring tasks.
+                  </p>
+                }
                 <div class="sch-footer">
-                  <button class="sch-save-btn" (click)="saveSchedule()">Save</button>
+                  <button class="sch-save-btn" [disabled]="schRecurring && !schDueDate" (click)="saveSchedule()">Save</button>
                 </div>
               </div>
             }
@@ -513,7 +519,12 @@ export interface SubtaskDroppedEvent {
       padding: 3px 12px; border-radius: 5px; border: none; cursor: pointer;
       background: var(--accent-color); color: #fff;
       font-family: inherit; font-size: 11px; font-weight: 600;
-      &:hover { opacity: 0.9; }
+      &:hover:not(:disabled) { opacity: 0.9; }
+      &:disabled { opacity: 0.4; cursor: default; }
+    }
+    .sch-recur-warn {
+      display: flex; align-items: center; gap: 4px; margin: 2px 0 4px;
+      font-size: 11px; color: #e65100;
     }
 
     /* ── Priority borders & backgrounds ─────────────── */
