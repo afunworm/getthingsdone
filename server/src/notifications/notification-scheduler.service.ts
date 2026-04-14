@@ -316,15 +316,31 @@ export class NotificationSchedulerService {
       WHERE pm.project_id = ?
     `).all(projectId) as any[];
 
-    const taskDirect = this.db.prepare(
-      'SELECT user_id FROM todo_assignees WHERE todo_id = ? AND user_id IS NOT NULL',
-    ).all(todoId) as any[];
+    // Only include task assignees who also currently have project access.
+    const taskDirect = this.db.prepare(`
+      SELECT ta.user_id FROM todo_assignees ta
+      WHERE ta.todo_id = ? AND ta.user_id IS NOT NULL
+        AND (
+          EXISTS (SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ta.user_id)
+          OR EXISTS (
+            SELECT 1 FROM project_members pm
+            JOIN team_members tm ON tm.team_id = pm.team_id
+            WHERE pm.project_id = ? AND tm.user_id = ta.user_id
+          )
+          OR ta.user_id = ?
+        )
+    `).all(todoId, projectId, projectId, project?.owner_id ?? '') as any[];
 
     const taskViaTeam = this.db.prepare(`
       SELECT DISTINCT tm.user_id FROM todo_assignees ta
       JOIN team_members tm ON tm.team_id = ta.team_id
       WHERE ta.todo_id = ? AND ta.team_id IS NOT NULL
-    `).all(todoId) as any[];
+        AND EXISTS (
+          SELECT 1 FROM project_members pm2
+          JOIN team_members tm2 ON tm2.team_id = pm2.team_id
+          WHERE pm2.project_id = ? AND tm2.user_id = tm.user_id
+        )
+    `).all(todoId, projectId) as any[];
 
     const ids = new Set<string>([
       ...(project?.owner_id ? [project.owner_id] : []),

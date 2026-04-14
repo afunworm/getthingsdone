@@ -242,6 +242,9 @@ export class NotificationsService {
     payload: NotificationPayload,
     skipEmail = false,
   ): void {
+    // Skip if the user no longer has access to the project (e.g. removed from a team).
+    if (projectId && !this.userHasProjectAccess(userId, projectId)) return;
+
     const settings = this.getEffectiveSettings(userId, projectId);
     if (!settings[type]) return;
 
@@ -284,6 +287,22 @@ export class NotificationsService {
       ...viaTeam.map((r) => r.user_id),
     ]);
     return [...ids];
+  }
+
+  /** Returns true if the user currently has access to the project (owner, direct member, or via a team). */
+  userHasProjectAccess(userId: string, projectId: string): boolean {
+    const project = this.db.prepare('SELECT owner_id FROM projects WHERE id = ?').get(projectId) as any;
+    if (!project) return false;
+    if (project.owner_id === userId) return true;
+    const direct = this.db.prepare(
+      'SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?',
+    ).get(projectId, userId);
+    if (direct) return true;
+    return !!(this.db.prepare(`
+      SELECT 1 FROM project_members pm
+      JOIN team_members tm ON tm.team_id = pm.team_id
+      WHERE pm.project_id = ? AND tm.user_id = ?
+    `).get(projectId, userId));
   }
 
   sendEmail(toEmail: string, payload: NotificationPayload): void {
