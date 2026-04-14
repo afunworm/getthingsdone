@@ -91,17 +91,16 @@ export class ProjectsController {
   // ── Display prefs ───────────────────────────────────────────────────────────
 
   @Get(':id/prefs')
-  getPrefs(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.projectsService.getPrefs(user.id, id);
+  getPrefs(@Param('id') id: string) {
+    return this.projectsService.getPrefs(id);
   }
 
   @Patch(':id/prefs')
   updatePrefs(
     @Param('id') id: string,
     @Body() dto: { show_task_count?: boolean; count_mode?: string; highlight_color?: string | null },
-    @CurrentUser() user: any,
   ) {
-    return this.projectsService.updatePrefs(user.id, id, dto);
+    return this.projectsService.updatePrefs(id, dto);
   }
 
   // ── Delete ──────────────────────────────────────────────────────────────────

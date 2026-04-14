@@ -517,14 +517,9 @@ export class NewProjectDialogComponent implements OnInit {
       body.memberUserIds = this.pendingMembers().filter((m) => !m.isTeam).map((m) => m.id);
       body.memberTeamIds = this.pendingMembers().filter((m) => m.isTeam).map((m) => m.id);
       this.api.post<any>('/projects', body).subscribe((p) => {
-        const hasCustomPref = this.prefs.show_task_count || !!this.prefs.highlight_color;
-        if (hasCustomPref) {
-          this.api.patch<any>(`/projects/${p.id}/prefs`, this.prefs).subscribe((pref) => {
-            this.dialogRef.close({ ...p, user_pref: pref });
-          });
-        } else {
-          this.dialogRef.close(p);
-        }
+        this.api.patch<any>(`/projects/${p.id}/prefs`, this.prefs).subscribe((pref) => {
+          this.dialogRef.close({ ...p, user_pref: pref });
+        });
       });
     }
   }
