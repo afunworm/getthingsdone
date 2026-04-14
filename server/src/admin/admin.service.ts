@@ -81,7 +81,7 @@ export class AdminService {
   }
 
   createToken(dto: { name: string; expiresAt?: number | null }, createdBy: string) {
-    const raw = 'ft_' + randomBytes(32).toString('hex');
+    const raw = 'gtd_' + randomBytes(32).toString('hex');
     const hash = createHash('sha256').update(raw).digest('hex');
     const id = uuidv4();
     this.db.prepare(`

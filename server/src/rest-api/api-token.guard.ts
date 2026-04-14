@@ -17,7 +17,7 @@ export class ApiTokenGuard implements CanActivate {
     }
 
     const raw = auth.slice(7).trim();
-    if (!raw.startsWith('ft_')) {
+    if (!raw.startsWith('gtd_')) {
       throw new UnauthorizedException('Invalid API token format');
     }
 

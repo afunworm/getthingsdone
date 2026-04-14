@@ -1565,6 +1565,7 @@ export class TodoDialogComponent implements OnInit {
         type: this.schedType(),
       });
       this.schedSaved.set(true);
+      this.cdr.detectChanges();
       setTimeout(() => this.schedSaved.set(false), 2000);
     });
   }

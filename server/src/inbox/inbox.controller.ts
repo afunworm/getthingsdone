@@ -23,6 +23,7 @@ export class InboxController {
       isRecurring?: boolean;
       recurrenceRule?: any;
       sortOrder?: number;
+      priority?: number;
     },
     @CurrentUser() user: any,
   ) {

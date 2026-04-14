@@ -65,6 +65,7 @@ export class InboxService {
       isRecurring?: boolean;
       recurrenceRule?: any;
       sortOrder?: number;
+      priority?: number;
       apiTokenId?: string;
     },
     userId: string,
@@ -73,8 +74,8 @@ export class InboxService {
     this.db.prepare(`
       INSERT INTO todos (
         id, title, description, due_date, is_recurring, recurrence_rule,
-        sort_order, is_inbox, inbox_user_id, parent_todo_id, created_by, created_via_token_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+        sort_order, is_inbox, inbox_user_id, parent_todo_id, created_by, created_via_token_id, priority
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
     `).run(
       id,
       dto.title,
@@ -87,6 +88,7 @@ export class InboxService {
       dto.parentTodoId ?? null,
       userId,
       dto.apiTokenId ?? null,
+      dto.priority ?? 0,
     );
     return this.db.prepare(`
       SELECT t.*, u.name AS created_by_name
