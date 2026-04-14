@@ -124,10 +124,6 @@ import { PriorityService } from '../../../core/services/priority.service';
             </button>
           }
           <div class="filter-spacer"></div>
-          <button class="filter-toggle" [class.active]="hideRecurring()" (click)="toggleHideRecurring()">
-            <span class="material-icons" style="font-size:14px">repeat</span>
-            Hide Future Recurring
-          </button>
           <button class="filter-toggle" [class.active]="hideDone()" (click)="toggleHideDone()">
             <span class="material-icons" style="font-size:14px">{{ hideDone() ? 'visibility_off' : 'visibility' }}</span>
             {{ hideDone() ? 'Show Completed' : 'Hide Completed' }}
@@ -363,10 +359,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
             default: return 0;
           }
         });
-      }
-
-      if (this.hideRecurring()) {
-        list = list.filter((t) => !(t.is_recurring && t.recurrence_parent_id));
       }
 
       const steps = this.filterSteps();
@@ -664,16 +656,26 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   advanceTodo(todo: any): void {
     const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/advance`, {}).subscribe((updated) => {
-      this.todos.update((list) => this.mergeTodo(list, updated));
+      const { _spawned, ...t } = updated;
+      this.todos.update((list) => {
+        const next = this.mergeTodo(list, t);
+        return _spawned ? [...next, _spawned] : next;
+      });
       if (wasNew) this.store.adjustCounts(this.id, -1, 0);
+      if (_spawned) this.store.adjustCounts(this.id, 1, 1);
     });
   }
 
   completeTodo(todo: any): void {
     const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/complete`, {}).subscribe((updated) => {
-      this.todos.update((list) => this.mergeTodo(list, updated));
+      const { _spawned, ...t } = updated;
+      this.todos.update((list) => {
+        const next = this.mergeTodo(list, t);
+        return _spawned ? [...next, _spawned] : next;
+      });
       if (wasNew) this.store.adjustCounts(this.id, -1, 0);
+      if (_spawned) this.store.adjustCounts(this.id, 1, 1);
     });
   }
 

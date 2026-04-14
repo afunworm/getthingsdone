@@ -455,19 +455,31 @@ export class TodayComponent implements OnInit, OnDestroy {
     );
   }
 
+  private appendSpawned(spawned: any): void {
+    const parent = this.allTodos().find((i) => i.todo.id === spawned.recurrence_parent_id);
+    if (!parent) return;
+    const wrapped: TaggedTodo = { todo: spawned, inboxId: parent.inboxId, inboxName: parent.inboxName, inboxColor: parent.inboxColor, maxStep: parent.maxStep };
+    this.allTodos.update((list) => [...list, wrapped]);
+    if (spawned.project_id) this.store.adjustCounts(spawned.project_id, 1, 1);
+  }
+
   advanceTodo(todo: any): void {
     const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/advance`, {}).subscribe((updated) => {
-      this.mergeTodo(updated);
+      const { _spawned, ...t } = updated;
+      this.mergeTodo(t);
       if (wasNew && todo.project_id) this.store.adjustCounts(todo.project_id, -1, 0);
+      if (_spawned) this.appendSpawned(_spawned);
     });
   }
 
   completeTodo(todo: any): void {
     const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/complete`, {}).subscribe((updated) => {
-      this.mergeTodo(updated);
+      const { _spawned, ...t } = updated;
+      this.mergeTodo(t);
       if (wasNew && todo.project_id) this.store.adjustCounts(todo.project_id, -1, 0);
+      if (_spawned) this.appendSpawned(_spawned);
     });
   }
 

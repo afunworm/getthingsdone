@@ -36,10 +36,6 @@ const INBOX_STEPS = [
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="hide-done-btn" [class.active]="hideRecurring()" (click)="toggleHideRecurring()">
-            <span class="material-icons" style="font-size:14px">repeat</span>
-            Hide Future Recurring
-          </button>
           <button class="hide-done-btn" [class.active]="hideDone()" (click)="toggleHideDone()">
             <span class="material-icons" style="font-size:14px">{{ hideDone() ? 'visibility_off' : 'visibility' }}</span>
             {{ hideDone() ? 'Show Completed' : 'Hide Completed' }}
@@ -313,10 +309,6 @@ export class InboxComponent implements OnInit, OnDestroy {
       const steps = this.filterSteps();
       if (steps.length > 0) list = list.filter((t) => steps.includes(t.flow_step_index));
 
-      if (this.hideRecurring()) {
-        list = list.filter((t) => !(t.is_recurring && t.recurrence_parent_id));
-      }
-
       const priorities = this.filterPriorities();
       if (priorities.length > 0) list = list.filter((t) => priorities.includes(t.priority ?? 0));
 
@@ -516,13 +508,21 @@ export class InboxComponent implements OnInit, OnDestroy {
 
   advanceTodo(todo: any): void {
     this.api.patch<any>(`/todos/${todo.id}/advance`, {}).subscribe((updated) => {
-      this.todos.update((list) => this.mergeTodo(list, updated));
+      this.todos.update((list) => {
+        const { _spawned, ...t } = updated;
+        const next = this.mergeTodo(list, t);
+        return _spawned ? [...next, _spawned] : next;
+      });
     });
   }
 
   completeTodo(todo: any): void {
     this.api.patch<any>(`/todos/${todo.id}/complete`, {}).subscribe((updated) => {
-      this.todos.update((list) => this.mergeTodo(list, updated));
+      this.todos.update((list) => {
+        const { _spawned, ...t } = updated;
+        const next = this.mergeTodo(list, t);
+        return _spawned ? [...next, _spawned] : next;
+      });
     });
   }
 

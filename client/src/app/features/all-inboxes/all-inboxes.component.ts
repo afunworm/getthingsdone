@@ -45,10 +45,6 @@ const INBOX_STEPS = [
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button class="hide-done-btn" [class.active]="hideRecurring()" (click)="toggleHideRecurring()">
-            <span class="material-icons" style="font-size:14px">repeat</span>
-            Hide Future Recurring
-          </button>
           <button class="hide-done-btn" [class.active]="hideDone()" (click)="toggleHideDone()">
             <span class="material-icons" style="font-size:14px">{{ hideDone() ? 'visibility_off' : 'visibility' }}</span>
             {{ hideDone() ? 'Show Completed' : 'Hide Completed' }}
@@ -332,10 +328,6 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
       const steps = this.filterSteps();
       if (steps.length > 0) list = list.filter((item) => steps.includes(item.todo.flow_step_index));
 
-      if (this.hideRecurring()) {
-        list = list.filter((item) => !(item.todo.is_recurring && item.todo.recurrence_parent_id));
-      }
-
       const priorities = this.filterPriorities();
       if (priorities.length > 0) list = list.filter((item) => priorities.includes(item.todo.priority ?? 0));
 
@@ -545,19 +537,31 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
     );
   }
 
+  private appendSpawned(spawned: any): void {
+    const parent = this.allTodos().find((i) => i.todo.id === spawned.recurrence_parent_id);
+    if (!parent) return;
+    const wrapped: TaggedTodo = { todo: spawned, inboxId: parent.inboxId, inboxName: parent.inboxName, inboxColor: parent.inboxColor, maxStep: parent.maxStep };
+    this.allTodos.update((list) => [...list, wrapped]);
+    if (spawned.project_id) this.store.adjustCounts(spawned.project_id, 1, 1);
+  }
+
   advanceTodo(todo: any): void {
     const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/advance`, {}).subscribe((updated) => {
-      this.mergeTodo(updated);
+      const { _spawned, ...t } = updated;
+      this.mergeTodo(t);
       if (wasNew && todo.project_id) this.store.adjustCounts(todo.project_id, -1, 0);
+      if (_spawned) this.appendSpawned(_spawned);
     });
   }
 
   completeTodo(todo: any): void {
     const wasNew = todo.flow_step_index === 0;
     this.api.patch<any>(`/todos/${todo.id}/complete`, {}).subscribe((updated) => {
-      this.mergeTodo(updated);
+      const { _spawned, ...t } = updated;
+      this.mergeTodo(t);
       if (wasNew && todo.project_id) this.store.adjustCounts(todo.project_id, -1, 0);
+      if (_spawned) this.appendSpawned(_spawned);
     });
   }
 

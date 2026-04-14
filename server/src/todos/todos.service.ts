@@ -445,8 +445,9 @@ export class TodosService {
     this.db.prepare('UPDATE todos SET flow_step_index = ?, updated_at = unixepoch() WHERE id = ?')
       .run(nextIndex, id);
 
+    let spawnedId: string | null = null;
     if (isFinal && todo.is_recurring && todo.recurrence_rule) {
-      this.spawnNextRecurrence(todo, userId);
+      spawnedId = this.spawnNextRecurrence(todo, userId);
     }
 
     this.recordHistory(id, userId, 'status', this.stepName(steps[todo.flow_step_index]), this.stepName(steps[nextIndex]));
@@ -454,7 +455,9 @@ export class TodosService {
       todo, userId, this.stepName(steps[nextIndex]), isFinal, false,
     ));
 
-    return this.findById(id, userId, userRole);
+    const updated = this.findById(id, userId, userRole);
+    const spawned = spawnedId ? this.findById(spawnedId, userId, userRole) : null;
+    return spawned ? { ...updated, _spawned: spawned } : updated;
   }
 
   completeFlow(id: string, userId: string, userRole: string) {
@@ -471,8 +474,9 @@ export class TodosService {
     this.db.prepare('UPDATE todos SET flow_step_index = ?, updated_at = unixepoch() WHERE id = ?')
       .run(steps.length - 1, id);
 
+    let spawnedId: string | null = null;
     if (todo.is_recurring && todo.recurrence_rule) {
-      this.spawnNextRecurrence(todo, userId);
+      spawnedId = this.spawnNextRecurrence(todo, userId);
     }
 
     this.recordHistory(id, userId, 'status', this.stepName(steps[todo.flow_step_index]), this.stepName(steps[steps.length - 1]));
@@ -480,7 +484,9 @@ export class TodosService {
       todo, userId, this.stepName(steps[steps.length - 1]), true, false,
     ));
 
-    return this.findById(id, userId, userRole);
+    const updated = this.findById(id, userId, userRole);
+    const spawned = spawnedId ? this.findById(spawnedId, userId, userRole) : null;
+    return spawned ? { ...updated, _spawned: spawned } : updated;
   }
 
   setStep(id: string, stepIndex: number, userId: string, userRole: string) {
@@ -538,12 +544,12 @@ export class TodosService {
     return next;
   }
 
-  private spawnNextRecurrence(todo: any, userId: string) {
+  private spawnNextRecurrence(todo: any, userId: string): string | null {
     // The cron may have already created a child for this task — don't duplicate.
     const alreadySpawned = this.db
       .prepare('SELECT 1 FROM todos WHERE recurrence_parent_id = ?')
       .get(todo.id);
-    if (alreadySpawned) return;
+    if (alreadySpawned) return null;
 
     const rule = JSON.parse(todo.recurrence_rule);
     const base = todo.due_date ? new Date(todo.due_date * 1000) : new Date();
@@ -562,6 +568,7 @@ export class TodosService {
       1, todo.recurrence_rule, todo.id,
       todo.sort_order, todo.is_inbox, todo.inbox_user_id, userId,
     );
+    return id;
   }
 
   reorder(updates: { id: string; sortOrder: number }[]) {
