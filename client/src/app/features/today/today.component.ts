@@ -221,7 +221,9 @@ export class TodayComponent implements OnInit, OnDestroy {
     effect(() => {
       if (this.settings.loaded()) {
         const hd = this.settings.get('today.hideDone');
-        this.hideDone.set(hd === null ? true : hd === '1');
+        const newHideDone = hd === null ? true : hd === '1';
+        this.hideDone.set(newHideDone);
+        if (!newHideDone && this.dataLoaded) this.load();
       }
     });
 
@@ -303,6 +305,7 @@ export class TodayComponent implements OnInit, OnDestroy {
     const next = !this.hideDone();
     this.hideDone.set(next);
     this.settings.set('today.hideDone', next ? '1' : '0');
+    this.load();
   }
 
   toggleInbox(id: string): void {
@@ -320,9 +323,10 @@ export class TodayComponent implements OnInit, OnDestroy {
   load(): void {
     this.loading.set(true);
     const inboxes = this.store.inboxes() ?? [];
-    const personal$ = this.api.get<any[]>('/inbox').pipe(catchError(() => of([])));
+    const qs = this.hideDone() ? '' : '?includeDone=true';
+    const personal$ = this.api.get<any[]>(`/inbox${qs}`).pipe(catchError(() => of([])));
     const team$ = inboxes.map((inbox) =>
-      this.api.get<any[]>(`/todos/project/${inbox.id}`).pipe(catchError(() => of([]))),
+      this.api.get<any[]>(`/todos/project/${inbox.id}${qs}`).pipe(catchError(() => of([]))),
     );
 
     forkJoin([personal$, ...team$]).subscribe((results) => {

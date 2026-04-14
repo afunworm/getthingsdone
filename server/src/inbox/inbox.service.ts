@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 export class InboxService {
   constructor(private readonly db: DatabaseService) {}
 
-  findAll(userId: string) {
+  findAll(userId: string, includeDone = false) {
+    const doneFilter = includeDone ? '' : 'AND t.flow_step_index < 2';
     return this.db.prepare(`
       SELECT t.*, u.name AS created_by_name, at.name AS created_via_token_name,
         (SELECT COUNT(*) FROM todo_reminders WHERE todo_id = t.id AND user_id = ? AND sent = 0) as reminder_count,
@@ -16,7 +17,7 @@ export class InboxService {
       FROM todos t
       LEFT JOIN users u ON u.id = t.created_by
       LEFT JOIN api_tokens at ON at.id = t.created_via_token_id
-      WHERE t.is_inbox = 1 AND t.inbox_user_id = ? AND t.parent_todo_id IS NULL
+      WHERE t.is_inbox = 1 AND t.inbox_user_id = ? AND t.parent_todo_id IS NULL ${doneFilter}
       ORDER BY t.sort_order, t.created_at
     `).all(userId, userId).map((t: any) => ({
       ...t,

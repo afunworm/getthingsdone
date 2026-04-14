@@ -78,7 +78,7 @@ export class TodosService {
     };
   }
 
-  findByProject(projectId: string, userId: string, userRole: string) {
+  findByProject(projectId: string, userId: string, userRole: string, includeDone = false) {
     if (userRole !== 'admin') {
       const project = this.db.prepare('SELECT owner_id FROM projects WHERE id = ?').get(projectId) as any;
       if (!project) throw new NotFoundException();
@@ -101,6 +101,7 @@ export class TodosService {
       LEFT JOIN users u ON u.id = t.created_by
       LEFT JOIN api_tokens at ON at.id = t.created_via_token_id
       WHERE t.project_id = ? AND t.parent_todo_id IS NULL
+        ${includeDone ? '' : 'AND t.flow_step_index < (SELECT json_array_length(p2.flow_steps) - 1 FROM projects p2 WHERE p2.id = t.project_id)'}
       ORDER BY t.sort_order, t.created_at
     `).all(userId, projectId).map(this.parse.bind(this));
 

@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, HttpCode,
+  Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, HttpCode,
   UseInterceptors, UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -16,8 +16,12 @@ export class TodosController {
   constructor(private readonly todosService: TodosService) {}
 
   @Get('project/:projectId')
-  findByProject(@Param('projectId') projectId: string, @CurrentUser() user: any) {
-    return this.todosService.findByProject(projectId, user.id, user.role);
+  findByProject(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: any,
+    @Query('includeDone') includeDone?: string,
+  ) {
+    return this.todosService.findByProject(projectId, user.id, user.role, includeDone === 'true');
   }
 
   @Get(':id')

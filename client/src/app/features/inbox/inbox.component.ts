@@ -237,7 +237,7 @@ export class InboxComponent implements OnInit, OnDestroy {
 
   todos            = signal<any[]>([]);
   loading          = signal(true);
-  hideDone         = signal(false);
+  hideDone         = signal(true);
   hideRecurring    = signal(true);
   filterState      = signal<FilterSortState>(DEFAULT_FILTER_STATE);
   filterSteps      = signal<number[]>([]);
@@ -268,7 +268,9 @@ export class InboxComponent implements OnInit, OnDestroy {
     effect(() => {
       if (this.settings.loaded()) {
         const hd = this.settings.get('inbox.hideDone');
-        this.hideDone.set(hd === null ? true : hd === '1');
+        const newHideDone = hd === null ? true : hd === '1';
+        this.hideDone.set(newHideDone);
+        if (!newHideDone) this.load();
         const hr = this.settings.get('inbox.hideRecurring');
         this.hideRecurring.set(hr === null ? true : hr === '1');
       }
@@ -351,6 +353,7 @@ export class InboxComponent implements OnInit, OnDestroy {
     const next = !this.hideDone();
     this.hideDone.set(next);
     this.settings.set('inbox.hideDone', next ? '1' : '0');
+    this.load();
   }
 
   toggleHideRecurring(): void {
@@ -389,7 +392,8 @@ export class InboxComponent implements OnInit, OnDestroy {
 
   load(): void {
     this.loading.set(true);
-    this.api.get<any[]>('/inbox').subscribe({
+    const url = this.hideDone() ? '/inbox' : '/inbox?includeDone=true';
+    this.api.get<any[]>(url).subscribe({
       next: (todos) => { this.todos.set(todos); this.loading.set(false); },
       error: () => this.loading.set(false),
     });

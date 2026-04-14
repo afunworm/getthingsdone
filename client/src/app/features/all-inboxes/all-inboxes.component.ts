@@ -247,7 +247,7 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
   private allTodos   = signal<TaggedTodo[]>([]);
   private dataLoaded = false;
   loading            = signal(true);
-  hideDone           = signal(false);
+  hideDone           = signal(true);
   hideRecurring      = signal(true);
   filterState        = signal<FilterSortState>(DEFAULT_FILTER_STATE);
   selectedInboxIds   = signal<string[]>([]);
@@ -268,7 +268,9 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
     effect(() => {
       if (this.settings.loaded()) {
         const hd = this.settings.get('all-inboxes.hideDone');
-        this.hideDone.set(hd === null ? true : hd === '1');
+        const newHideDone = hd === null ? true : hd === '1';
+        this.hideDone.set(newHideDone);
+        if (!newHideDone && this.dataLoaded) this.load();
         const hr = this.settings.get('all-inboxes.hideRecurring');
         this.hideRecurring.set(hr === null ? true : hr === '1');
       }
@@ -352,6 +354,7 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
     const next = !this.hideDone();
     this.hideDone.set(next);
     this.settings.set('all-inboxes.hideDone', next ? '1' : '0');
+    this.load();
   }
 
   toggleHideRecurring(): void {
@@ -391,9 +394,10 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
   load(): void {
     this.loading.set(true);
     const inboxes = this.store.inboxes() ?? [];
-    const personal$ = this.api.get<any[]>('/inbox').pipe(catchError(() => of([])));
+    const qs = this.hideDone() ? '' : '?includeDone=true';
+    const personal$ = this.api.get<any[]>(`/inbox${qs}`).pipe(catchError(() => of([])));
     const team$ = inboxes.map((inbox) =>
-      this.api.get<any[]>(`/todos/project/${inbox.id}`).pipe(catchError(() => of([]))),
+      this.api.get<any[]>(`/todos/project/${inbox.id}${qs}`).pipe(catchError(() => of([]))),
     );
 
     forkJoin([personal$, ...team$]).subscribe((results) => {

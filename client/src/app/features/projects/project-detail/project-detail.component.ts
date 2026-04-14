@@ -291,7 +291,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   filterPriorities = signal<number[]>([]);
   filterMine       = signal(false);
   filterMyTeams    = signal(false);
-  hideDone         = signal(false);
+  hideDone         = signal(true);
   hideRecurring    = signal(true);
   filterState      = signal<FilterSortState>(DEFAULT_FILTER_STATE);
   filteredTodos    = signal<any[]>([]);
@@ -319,7 +319,9 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
     effect(() => {
       if (this.settings.loaded() && this.id) {
         const hd = this.settings.get(`project.${this.id}.hideDone`);
-        this.hideDone.set(hd === null ? true : hd === '1');
+        const newHideDone = hd === null ? true : hd === '1';
+        this.hideDone.set(newHideDone);
+        if (!newHideDone) this.loadTodos();
         const hr = this.settings.get(`project.${this.id}.hideRecurring`);
         this.hideRecurring.set(hr === null ? true : hr === '1');
       }
@@ -424,7 +426,8 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   loadTodos(): void {
-    this.api.get<any[]>(`/todos/project/${this.id}`).subscribe((t) => this.todos.set(t));
+    const qs = this.hideDone() ? '' : '?includeDone=true';
+    this.api.get<any[]>(`/todos/project/${this.id}${qs}`).subscribe((t) => this.todos.set(t));
   }
 
   countByStep(step: number): number {
@@ -459,6 +462,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
     const next = !this.hideDone();
     this.hideDone.set(next);
     this.settings.set(`project.${this.id}.hideDone`, next ? '1' : '0');
+    this.loadTodos();
   }
 
   toggleHideRecurring(): void {
