@@ -41,6 +41,7 @@ import { AuthService } from '../../../core/auth/auth.service';
                       } @else {
                         <button class="dropdown-item" (click)="setRole(u, 'user'); openMenu.set(null)">Remove admin</button>
                       }
+                      <button class="dropdown-item" (click)="resetTutorial(u); openMenu.set(null)">Reset tutorial</button>
                     </div>
                   }
                 </div>
@@ -122,5 +123,9 @@ export class AdminUsersComponent implements OnInit {
     this.api.patch(`/users/${user.id}/role`, { role }).subscribe((updated: any) => {
       this.users.update((list) => list.map((u) => (u.id === updated.id ? updated : u)));
     });
+  }
+
+  resetTutorial(user: any): void {
+    this.api.patch(`/users/${user.id}/reset-onboarding`, {}).subscribe();
   }
 }

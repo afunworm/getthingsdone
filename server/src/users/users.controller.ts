@@ -56,4 +56,11 @@ export class UsersController {
   updateRole(@Param('id') id: string, @Body('role') role: 'admin' | 'user') {
     return this.usersService.updateRole(id, role);
   }
+
+  @Patch(':id/reset-onboarding')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  resetOnboarding(@Param('id') id: string) {
+    return this.usersService.resetOnboarding(id);
+  }
 }

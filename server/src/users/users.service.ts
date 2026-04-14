@@ -78,6 +78,16 @@ export class UsersService {
     return this.getMe(id);
   }
 
+  resetOnboarding(targetId: string) {
+    this.db.prepare(
+      'UPDATE users SET onboarding_completed_at = NULL, updated_at = unixepoch() WHERE id = ?',
+    ).run(targetId);
+    this.db.prepare(
+      'DELETE FROM todos WHERE is_tour_demo = 1 AND inbox_user_id = ? AND parent_todo_id IS NULL',
+    ).run(targetId);
+    return { ok: true };
+  }
+
   deleteTourDemoTasks(userId: string): void {
     this.db
       .prepare(
