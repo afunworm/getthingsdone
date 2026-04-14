@@ -700,7 +700,6 @@ const DEFAULT_STEPS: StepDef[] = [
       overflow: hidden;
     }
 
-    /* ── Header ──────────────────────────────────── */
     .dialog-header {
       display: flex; align-items: center; gap: 8px;
       padding: 12px 14px 10px; border-bottom: 1px solid var(--surface-border);
@@ -709,7 +708,6 @@ const DEFAULT_STEPS: StepDef[] = [
     .dialog-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     .close-btn { margin-left: auto; flex-shrink: 0; }
 
-    /* Detail mode header (2-row layout) */
     .detail-header { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
     .detail-step-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -767,7 +765,6 @@ const DEFAULT_STEPS: StepDef[] = [
       color: var(--text-primary); outline: none;
     }
 
-    /* ── Meta row ────────────────────────────────── */
     .meta-row {
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
       padding: 7px 14px; border-bottom: 1px solid var(--surface-border);
@@ -795,13 +792,11 @@ const DEFAULT_STEPS: StepDef[] = [
       color: var(--text-primary); outline: none;
     }
 
-    /* ── Body ────────────────────────────────────── */
     .dialog-body {
       padding: 12px 14px; display: flex; flex-direction: column; gap: 0;
       overflow-y: auto; flex: 1;
     }
 
-    /* Create form fields */
     .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
     .create-row-2 { display: flex; gap: 12px; }
     .recurrence-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -813,7 +808,6 @@ const DEFAULT_STEPS: StepDef[] = [
     .inline-num { width: 60px !important; }
     .inline-sel { width: 90px !important; }
 
-    /* Sections */
     .section {
       padding: 10px 0; border-bottom: 1px solid var(--surface-border);
       &:last-child { border-bottom: 0; }
@@ -832,7 +826,6 @@ const DEFAULT_STEPS: StepDef[] = [
       font-size: 10px; font-weight: 700; color: var(--text-muted);
     }
 
-    /* Parent context (shown for subtasks) */
     .parent-ctx {
       display: flex; flex-direction: column; gap: 2px;
       padding: 7px 10px; margin-bottom: 2px;
@@ -849,7 +842,6 @@ const DEFAULT_STEPS: StepDef[] = [
       overflow: hidden;
     }
 
-    /* Description */
     .desc-text {
       margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-primary);
       cursor: pointer; padding: 4px 0;
@@ -876,7 +868,6 @@ const DEFAULT_STEPS: StepDef[] = [
     .inline-actions { display: flex; gap: 6px; margin-top: 6px; }
     .btn-sm { padding: 4px 12px; font-size: 12px; }
 
-    /* Schedule section */
     .sch-body { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
     .sch-grid { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
     .sch-occurrences {
@@ -925,7 +916,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &:focus { border-color: var(--accent-color); }
     }
 
-    /* Create-mode assignees & chips */
     .create-assignees {
       display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
     }
@@ -942,7 +932,6 @@ const DEFAULT_STEPS: StepDef[] = [
       color: inherit; opacity: .7; &:hover { opacity: 1; }
     }
 
-    /* Create-mode subtask rows */
     .create-subtask-row {
       display: flex; align-items: center; gap: 6px;
       padding: 3px 0;
@@ -951,7 +940,6 @@ const DEFAULT_STEPS: StepDef[] = [
       flex: 1; font-size: 13px; color: var(--text-secondary);
     }
 
-    /* Sub-tasks */
     .subtask-row {
       display: flex; align-items: center; gap: 7px;
       padding: 5px 4px; border-radius: 5px;
@@ -996,7 +984,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &:focus { border-color: var(--accent-color); background: var(--surface-card); }
     }
 
-    /* Comments */
     .comments-list {
       display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;
       max-height: 340px; overflow-y: auto;
@@ -1036,7 +1023,6 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .no-comments { text-align: center; color: var(--text-muted); font-size: 13px; padding: 12px 0; margin: 0; }
 
-    /* Reminders */
     .reminder-quick {
       display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
       margin-bottom: 8px;
@@ -1073,7 +1059,6 @@ const DEFAULT_STEPS: StepDef[] = [
       .reminder-row:hover & { opacity: 1; }
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
-    /* History */
     .hist-section { border-top: 1px solid var(--surface-border); }
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
@@ -1088,7 +1073,6 @@ const DEFAULT_STEPS: StepDef[] = [
     .hist-val,.hist-new { font-size: 12px; color: var(--text-primary); }
     .hist-old { font-size: 12px; color: var(--text-muted); text-decoration: line-through; }
     .hist-empty { font-size: 12px; color: var(--text-muted); margin: 6px 0; }
-    /* Attachment grid */
     .att-grid {
       display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;
     }
@@ -1132,7 +1116,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &:hover { border-color: var(--accent-color); color: var(--accent-color); }
     }
 
-    /* Comment file attach button */
     .btn-attach {
       display: inline-flex; align-items: center; justify-content: center;
       width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
@@ -1140,7 +1123,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &:hover { color: var(--accent-color); background: var(--surface-hover); }
     }
 
-    /* Pending file chips */
     .pending-files { display: flex; flex-wrap: wrap; gap: 6px; }
     .pending-chip {
       display: inline-flex; align-items: center; gap: 5px;
@@ -1155,7 +1137,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &:hover { color: var(--text-primary); }
     }
 
-    /* Lightbox */
     .lightbox-backdrop {
       position: fixed; inset: 0; z-index: 50000;
       background: rgba(0,0,0,.85);
@@ -1212,7 +1193,6 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .comment-compose { display: flex; flex-direction: column; gap: 6px; }
 
-    /* Priority picker */
     .pri-wrap { position: relative; }
     .meta-pri-btn {
       cursor: pointer;
@@ -1236,7 +1216,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &.pri-opt-active { color: var(--text-primary); font-weight: 500; }
     }
 
-    /* Creator picker */
     .creator-wrap { position: relative; }
     .meta-creator-btn {
       cursor: pointer !important;
@@ -1259,7 +1238,6 @@ const DEFAULT_STEPS: StepDef[] = [
       &.active { color: var(--accent-color); font-weight: 500; }
     }
 
-    /* Footer */
     .dialog-footer {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 14px 12px; border-top: 1px solid var(--surface-border); flex-shrink: 0;
