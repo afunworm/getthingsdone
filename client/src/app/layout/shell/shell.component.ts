@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, NgZone, inject, signal } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { Dialog } from '@angular/cdk/dialog';
@@ -24,7 +25,7 @@ import { APP_VERSION } from '../../version';
   template: `
     <div class="shell">
       <!-- Sidebar -->
-      <aside class="sidebar">
+      <aside class="sidebar" [class.sidebar-open]="sidebarOpen()">
         <!-- Logo + Bell row -->
         <div class="sidebar-logo">
           <div class="logo-mark">✓</div>
@@ -173,9 +174,29 @@ import { APP_VERSION } from '../../version';
 
       <!-- Main -->
       <main id="tour-main-content" class="main-content">
+        <!-- Mobile top bar (hidden on desktop) -->
+        <div class="mobile-topbar">
+          <button class="mobile-menu-btn" (click)="toggleSidebar()" aria-label="Open menu">
+            <span class="material-icons">menu</span>
+          </button>
+          <span class="mobile-logo-text">Get Things Done</span>
+          <div class="bell-wrap">
+            <button class="bell-btn" (click)="toggleNotifPanel($event)" title="Notifications">
+              <span class="material-icons" style="font-size:18px">notifications</span>
+              @if (notifSvc.unreadCount() > 0) {
+                <span class="bell-badge">{{ notifSvc.unreadCount() > 9 ? '9+' : notifSvc.unreadCount() }}</span>
+              }
+            </button>
+          </div>
+        </div>
         <router-outlet />
       </main>
     </div>
+
+    <!-- Mobile sidebar backdrop -->
+    @if (sidebarOpen()) {
+      <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
+    }
 
     <!-- Notification panel backdrop -->
     @if (notifPanelOpen()) {
@@ -979,6 +1000,72 @@ import { APP_VERSION } from '../../version';
       }
 
       .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* Mobile topbar — hidden on desktop */
+      .mobile-topbar { display: none; }
+      .sidebar-backdrop { display: none; }
+
+      @media (max-width: 768px) {
+        /* Sidebar becomes a fixed overlay */
+        .sidebar {
+          position: fixed;
+          top: 0; left: 0; bottom: 0;
+          z-index: 200;
+          transform: translateX(-100%);
+          transition: transform 220ms cubic-bezier(.4, 0, .2, 1);
+          box-shadow: none;
+        }
+        .sidebar.sidebar-open {
+          transform: translateX(0);
+          box-shadow: 4px 0 24px rgba(0, 0, 0, .22);
+        }
+
+        /* Main takes full width */
+        .main-content { width: 100%; }
+
+        /* Mobile top bar */
+        .mobile-topbar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 12px;
+          height: 48px;
+          flex-shrink: 0;
+          background: var(--surface-card);
+          border-bottom: 1px solid var(--surface-border);
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .mobile-menu-btn {
+          width: 36px; height: 36px;
+          border: 0; background: transparent;
+          border-radius: 6px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--text-secondary); flex-shrink: 0;
+          &:hover { background: var(--surface-hover); color: var(--text-primary); }
+        }
+        .mobile-logo-text {
+          flex: 1;
+          font-size: 15px; font-weight: 700;
+          color: var(--text-primary);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Backdrop behind sidebar */
+        .sidebar-backdrop {
+          display: block;
+          position: fixed; inset: 0; z-index: 199;
+          background: rgba(0, 0, 0, .4);
+          animation: fadeIn 200ms ease-out;
+        }
+
+        /* Notification panel: full-width from left on mobile */
+        .notif-panel {
+          left: 0;
+          width: min(340px, 100vw);
+        }
+      }
     `,
   ],
 })
@@ -996,6 +1083,12 @@ export class ShellComponent implements OnInit, OnDestroy {
   private settings = inject(SettingsService);
   private router   = inject(Router);
   private ngZone   = inject(NgZone);
+
+  // Mobile sidebar
+  sidebarOpen = signal(false);
+
+  toggleSidebar(): void { this.sidebarOpen.update((v) => !v); }
+  closeSidebar(): void  { this.sidebarOpen.set(false); }
 
   // Notification panel
   notifPanelOpen = signal(false);
@@ -1023,8 +1116,12 @@ export class ShellComponent implements OnInit, OnDestroy {
   postponeMenuPos = signal<{ top: number; right: number } | null>(null);
 
   private reminderSub?: Subscription;
+  private routerSub?: Subscription;
 
   ngOnInit(): void {
+    this.routerSub = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe(() => this.sidebarOpen.set(false));
     this.api.get<any[]>('/projects').subscribe((list) => {
       this.store.set(list);
       this.api.get<{ projectIds: string[] }>('/projects/order').subscribe(({ projectIds }) => {
@@ -1051,6 +1148,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.notifSvc.destroy();
     this.reminderSub?.unsubscribe();
+    this.routerSub?.unsubscribe();
     document.removeEventListener('pointermove', this.boundReorderMove);
     document.removeEventListener('pointerup', this.boundReorderUp);
   }
