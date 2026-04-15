@@ -222,7 +222,7 @@ export interface Assignees {
 })
 export class AssignDialogComponent implements OnInit {
   dialogRef = inject(DialogRef<Assignees | undefined>);
-  data: { todoId: string | null; assignees: Assignees } = inject(DIALOG_DATA);
+  data: { todoId: string | null; assignees: Assignees; projectId?: string | null } = inject(DIALOG_DATA);
   private api = inject(ApiService);
 
   search = '';
@@ -240,8 +240,11 @@ export class AssignDialogComponent implements OnInit {
     const saved = this.data.assignees ?? { users: [], teams: [] };
     this.original = { users: [...saved.users], teams: [...saved.teams] };
     this.draft.set({ users: [...saved.users], teams: [...saved.teams] });
-    this.api.get<any[]>('/users').subscribe((u) => this.allUsers.set(u));
-    this.api.get<any[]>('/teams').subscribe((t) => { this.allTeams.set(t); this.loaded.set(true); });
+    const pid = this.data.projectId;
+    const usersUrl = pid ? `/projects/${pid}/users` : '/users';
+    const teamsUrl = pid ? `/projects/${pid}/teams` : '/teams';
+    this.api.get<any[]>(usersUrl).subscribe((u) => this.allUsers.set(u));
+    this.api.get<any[]>(teamsUrl).subscribe((t) => { this.allTeams.set(t); this.loaded.set(true); });
   }
 
   filteredUsers(): any[] {

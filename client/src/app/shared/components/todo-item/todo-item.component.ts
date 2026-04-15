@@ -1007,7 +1007,7 @@ export class TodoItemComponent implements OnChanges {
     const ref = this.dialog.open(AssignDialogComponent, {
       width: '580px', maxHeight: '70vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { todoId: todo.id, assignees: todo.assignees ?? { users: [], teams: [] } },
+      data: { todoId: todo.id, assignees: todo.assignees ?? { users: [], teams: [] }, projectId: todo.project_id ?? null },
     });
     ref.closed.subscribe((result: any) => {
       if (result !== undefined) {

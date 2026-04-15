@@ -300,6 +300,22 @@ export class ProjectsService {
     `).all(project.owner_id, projectId, projectId);
   }
 
+  getAccessibleTeams(projectId: string, requesterId: string, requesterRole: string) {
+    if (requesterRole !== 'admin' && !this.userCanAccess(projectId, requesterId)) {
+      throw new ForbiddenException();
+    }
+    if (!this.db.prepare('SELECT 1 FROM projects WHERE id = ?').get(projectId)) {
+      throw new NotFoundException();
+    }
+
+    return this.db.prepare(`
+      SELECT t.id, t.name FROM teams t
+        JOIN project_members pm ON pm.team_id = t.id
+        WHERE pm.project_id = ?
+        ORDER BY t.name
+    `).all(projectId);
+  }
+
   delete(id: string, userId: string, userRole: string) {
     const project = this.db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
     if (!project) throw new NotFoundException();

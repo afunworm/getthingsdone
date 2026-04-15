@@ -78,6 +78,11 @@ export class ProjectsController {
     return this.projectsService.getAccessibleUsers(id, user.id, user.role);
   }
 
+  @Get(':id/teams')
+  getAccessibleTeams(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.projectsService.getAccessibleTeams(id, user.id, user.role);
+  }
+
   @Delete(':id/members/:memberId')
   @HttpCode(204)
   removeMember(

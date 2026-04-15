@@ -1601,7 +1601,7 @@ subNextStepLabel(sub: any): string {
     const ref = this.dialog.open(AssignDialogComponent, {
       width: '580px', maxHeight: '70vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { todoId: sub.id, assignees: sub.assignees ?? { users: [], teams: [] } },
+      data: { todoId: sub.id, assignees: sub.assignees ?? { users: [], teams: [] }, projectId: this.todo.project_id ?? null },
     });
     ref.closed.subscribe((result: any) => {
       if (result !== undefined) {
@@ -1638,7 +1638,7 @@ subNextStepLabel(sub: any): string {
     const ref = this.dialog.open(AssignDialogComponent, {
       width: '580px', maxHeight: '70vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { todoId: this.todo.id, assignees: this.todo.assignees ?? { users: [], teams: [] } },
+      data: { todoId: this.todo.id, assignees: this.todo.assignees ?? { users: [], teams: [] }, projectId: this.todo.project_id ?? null },
     });
     ref.closed.subscribe((result: any) => {
       if (result !== undefined) {
@@ -1815,7 +1815,7 @@ subNextStepLabel(sub: any): string {
     const ref = this.dialog.open(AssignDialogComponent, {
       width: '580px', maxHeight: '70vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { todoId: null, assignees: this.form.createAssignees },
+      data: { todoId: null, assignees: this.form.createAssignees, projectId: this.data.projectId ?? null },
     });
     ref.closed.subscribe((result: any) => {
       if (result !== undefined) {
