@@ -93,40 +93,33 @@ export class RestApiController {
   @HttpCode(HttpStatus.CREATED)
   createTask(@Body() dto: any, @CurrentUser() user: any) {
     if (dto.project_id) {
-      const task = this.todos.create(
+      return this.todos.create(
         {
           title: dto.title,
           description: dto.description,
           projectId: dto.project_id,
           dueDate: dto.due_date,
           sortOrder: dto.sort_order,
+          priority: dto.priority,
           apiTokenId: user.apiTokenId,
         },
         user.id,
         user.role,
       );
-      if (dto.priority) {
-        return this.todos.update(task.id, { priority: dto.priority }, user.id, user.role);
-      }
-      return task;
     }
 
     // Personal inbox
-    const task = this.inbox.create(
+    return this.inbox.create(
       {
         title: dto.title,
         description: dto.description,
         dueDate: dto.due_date,
         sortOrder: dto.sort_order,
+        priority: dto.priority,
         apiTokenId: user.apiTokenId,
       },
       user.id,
     );
-
-    if (dto.priority) {
-      return this.todos.update((task as any).id, { priority: dto.priority }, user.id, user.role);
-    }
-    return task;
   }
 
   /**
