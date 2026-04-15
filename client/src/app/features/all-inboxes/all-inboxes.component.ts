@@ -88,7 +88,7 @@ const INBOX_STEPS = [
       <div class="seg-row">
         <div class="pri-seg">
           <button class="pri-seg-btn" [class.active]="filterMine()" (click)="toggleAssignment('mine')">
-            <span class="material-icons" style="font-size:10px">person</span>Me
+            <span class="material-icons" style="font-size:10px">person</span>Assigned to Me
           </button>
           <button class="pri-seg-btn" [class.active]="filterMyTeams()" (click)="toggleAssignment('teams')">
             <span class="material-icons" style="font-size:10px">groups</span>My Teams
