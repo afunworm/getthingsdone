@@ -341,12 +341,19 @@ export class NotificationsService {
     ).all(todoId, userId);
   }
 
-  createReminder(todoId: string, userId: string, remindAt: number, label?: string): any {
+  createReminder(todoId: string, userId: string, remindAt: number, label?: string, notifyEmail = true): any {
     const id = uuidv4();
     this.db.prepare(`
-      INSERT INTO todo_reminders (id, todo_id, user_id, remind_at, label)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(id, todoId, userId, remindAt, label ?? null);
+      INSERT INTO todo_reminders (id, todo_id, user_id, remind_at, label, notify_email)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, todoId, userId, remindAt, label ?? null, notifyEmail ? 1 : 0);
+    return this.db.prepare('SELECT * FROM todo_reminders WHERE id = ?').get(id);
+  }
+
+  patchReminder(id: string, userId: string, notifyEmail: boolean): any {
+    this.db.prepare(
+      'UPDATE todo_reminders SET notify_email = ? WHERE id = ? AND user_id = ?',
+    ).run(notifyEmail ? 1 : 0, id, userId);
     return this.db.prepare('SELECT * FROM todo_reminders WHERE id = ?').get(id);
   }
 

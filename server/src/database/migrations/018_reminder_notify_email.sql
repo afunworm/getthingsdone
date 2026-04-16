@@ -1,0 +1,1 @@
+ALTER TABLE todo_reminders ADD COLUMN notify_email INTEGER NOT NULL DEFAULT 1;

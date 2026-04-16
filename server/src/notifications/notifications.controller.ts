@@ -95,10 +95,19 @@ export class NotificationsController {
   @Post('reminders/:todoId')
   createReminder(
     @Param('todoId') todoId: string,
-    @Body() body: { remindAt: number; label?: string },
+    @Body() body: { remindAt: number; label?: string; notifyEmail?: boolean },
     @CurrentUser() user: any,
   ) {
-    return this.svc.createReminder(todoId, user.id, body.remindAt, body.label);
+    return this.svc.createReminder(todoId, user.id, body.remindAt, body.label, body.notifyEmail ?? true);
+  }
+
+  @Patch('reminders/item/:id')
+  patchReminder(
+    @Param('id') id: string,
+    @Body() body: { notifyEmail: boolean },
+    @CurrentUser() user: any,
+  ) {
+    return this.svc.patchReminder(id, user.id, body.notifyEmail);
   }
 
   @Delete('reminders/item/:id')

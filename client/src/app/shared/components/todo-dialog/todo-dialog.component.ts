@@ -10,6 +10,7 @@ import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PriorityService } from '../../../core/services/priority.service';
 import { UserPrefsService } from '../../../core/services/user-prefs.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
@@ -450,6 +451,12 @@ const DEFAULT_STEPS: StepDef[] = [
                 <span class="reminder-time">{{ formatReminder(r) }}</span>
                 @if (r.sent) { <span class="reminder-sent-label">sent</span> }
                 @if (!r.sent) {
+                  <button class="btn-icon reminder-email-toggle"
+                    [class.active]="r.notify_email"
+                    (click)="toggleReminderEmail(r)"
+                    [title]="r.notify_email ? 'Email on (click to disable)' : 'Email off (click to enable)'">
+                    <span class="material-icons" style="font-size:13px">email</span>
+                  </button>
                   <button class="btn-icon reminder-del" (click)="deleteReminder(r.id)" title="Remove reminder">
                     <span class="material-icons" style="font-size:13px">close</span>
                   </button>
@@ -1085,6 +1092,12 @@ const DEFAULT_STEPS: StepDef[] = [
       background: color-mix(in srgb, #43a047 15%, transparent);
       color: #43a047; border-radius: 8px;
     }
+    .reminder-email-toggle {
+      width: 20px; height: 20px; opacity: 0; transition: opacity 120ms, color 120ms;
+      color: var(--text-muted);
+      .reminder-row:hover & { opacity: 1; }
+      &.active { color: var(--accent-color); opacity: 1; }
+    }
     .reminder-del {
       width: 20px; height: 20px; opacity: 0;
       transition: opacity 120ms;
@@ -1286,6 +1299,7 @@ export class TodoDialogComponent implements OnInit {
   private api = inject(ApiService);
   private auth = inject(AuthService);
   private userPrefs = inject(UserPrefsService);
+  private notifSvc  = inject(NotificationService);
   readonly prioritySvc = inject(PriorityService);
   private dialog = inject(Dialog);
   private cdr = inject(ChangeDetectorRef);
@@ -1534,7 +1548,8 @@ export class TodoDialogComponent implements OnInit {
     const ms = unit === 'day' ? amount * 86400000 : amount * 7 * 86400000;
     const remindAt = Math.floor((Date.now() + ms) / 1000);
     const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
-    this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label })
+    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+    this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label, notifyEmail })
       .subscribe((r) => {
         this.reminders.update((list) => [...list, r]);
         this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
@@ -1545,11 +1560,22 @@ export class TodoDialogComponent implements OnInit {
     if (!this.customReminderDate) return;
     const remindAt = Math.floor(new Date(this.customReminderDate).getTime() / 1000);
     if (remindAt <= Math.floor(Date.now() / 1000)) return;
-    this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt })
+    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+    this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, notifyEmail })
       .subscribe((r) => {
         this.reminders.update((list) => [...list, r]);
         this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
         this.customReminderDate = '';
+      });
+  }
+
+  toggleReminderEmail(r: any): void {
+    const newVal = !r.notify_email;
+    this.api.patch(`/notifications/reminders/item/${r.id}`, { notifyEmail: newVal })
+      .subscribe(() => {
+        this.reminders.update((list) =>
+          list.map((x) => x.id === r.id ? { ...x, notify_email: newVal } : x),
+        );
       });
   }
 
@@ -1644,7 +1670,8 @@ export class TodoDialogComponent implements OnInit {
         const remindAt = Math.floor(
           new Date(this.userPrefs.calcDueReminderDatetime(this.schedDueDate())).getTime() / 1000,
         );
-        this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date' })
+        const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+        this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date', notifyEmail })
           .subscribe((r) => {
             this.reminders.update((list) => [...list, r]);
             this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
@@ -1970,7 +1997,8 @@ subNextStepLabel(sub: any): string {
       ];
       if (this.form.reminderDate) {
         const remindAt = Math.floor(new Date(this.form.reminderDate).getTime() / 1000);
-        followUp.push(this.api.post<any>(`/notifications/reminders/${todo.id}`, { remindAt, label: 'Due date' }));
+        const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+        followUp.push(this.api.post<any>(`/notifications/reminders/${todo.id}`, { remindAt, label: 'Due date', notifyEmail }));
         todo.reminder_count = (todo.reminder_count ?? 0) + 1;
       }
       if (followUp.length === 0) {
