@@ -216,43 +216,30 @@ const DEFAULT_STEPS: StepDef[] = [
         <div class="section">
           <div class="section-hdr">
             <span class="section-label">Description</span>
-            @if (!isCreate && !editingDesc()) {
-              <button class="btn-icon edit-icon" (click)="startEditDesc()" title="Edit description">
-                <span class="material-icons" style="font-size:13px">edit</span>
-              </button>
-            }
           </div>
-          @if (isCreate) {
-            <div class="rte-field rte-desc-field">
+          <div class="rte-field rte-desc-field">
+            @if (isCreate) {
               <app-rich-text-editor
                 [content]="form.description"
                 [users]="accessibleUsers()"
                 placeholder="Optional"
                 (htmlChange)="form.description = $event"
               ></app-rich-text-editor>
-            </div>
-          } @else {
-            @if (!editingDesc()) {
-              @if (todo.description) {
-                <div class="desc-html" [innerHTML]="sanitize(todo.description)" (click)="onDescClick($event)"></div>
-              } @else {
-                <p class="desc-text desc-muted" (click)="startEditDesc()">No description — click to add</p>
-              }
             } @else {
-              <div class="rte-field rte-desc-field">
-                <app-rich-text-editor
-                  #descEditor
-                  [content]="descDraft"
-                  [users]="accessibleUsers()"
-                  placeholder="Add a description… (@ to mention)"
-                  (htmlChange)="descDraft = $event"
-                ></app-rich-text-editor>
-              </div>
-              <div class="inline-actions">
-                <button class="btn btn-primary btn-sm" (click)="saveDesc()">Save</button>
-                <button class="btn btn-ghost btn-sm" (click)="editingDesc.set(false)">Cancel</button>
-              </div>
+              <app-rich-text-editor
+                #descEditor
+                [content]="descDraft"
+                [users]="accessibleUsers()"
+                placeholder="Optional"
+                (htmlChange)="descDraft = $event"
+              ></app-rich-text-editor>
             }
+          </div>
+          @if (!isCreate && descDirty) {
+            <div class="inline-actions">
+              <button class="btn btn-primary btn-sm" (click)="saveDesc()">Save</button>
+              <button class="btn btn-ghost btn-sm" (click)="cancelDesc()">Cancel</button>
+            </div>
           }
         </div>
 
@@ -1428,9 +1415,9 @@ export class TodoDialogComponent implements OnInit {
 
   // Edit state
   editingTitle = signal(false);
-  editingDesc  = signal(false);
   titleDraft = '';
   descDraft  = '';
+  get descDirty(): boolean { return this.descDraft !== (this.todo?.description ?? ''); }
 
   // Schedule section (local draft — not saved until Save is clicked)
   schedDueDate   = signal('');
@@ -1616,6 +1603,7 @@ export class TodoDialogComponent implements OnInit {
     this.dialogRef.overlayRef.backdropClick().subscribe(() => this.close());
 
     if (!this.isCreate) {
+      this.descDraft = this.todo.description ?? '';
       this.api.get<any[]>(`/comments/todo/${this.todo.id}`).subscribe((c) => this.comments.set(c));
       this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((r) => this.reminders.set(r));
       this.api.get<any>(`/todos/${this.todo.id}`).subscribe((t) => this.todoAttachments.set(t.attachments ?? []));
@@ -1793,16 +1781,14 @@ export class TodoDialogComponent implements OnInit {
   }
 
   // ── Description editing ───────────────────────────────
-  startEditDesc(): void {
-    this.descDraft = this.todo.description ?? '';
-    this.editingDesc.set(true);
-  }
-
   saveDesc(): void {
     this.api.patch<any>(`/todos/${this.todo.id}`, { description: this.descDraft || null }).subscribe((updated) => {
       this.todo = { ...this.todo, ...updated };
-      this.editingDesc.set(false);
     });
+  }
+
+  cancelDesc(): void {
+    this.descDraft = this.todo.description ?? '';
   }
 
   // ── Schedule editing ──────────────────────────────────
@@ -2005,11 +1991,6 @@ subNextStepLabel(sub: any): string {
       this.todo = { ...this.todo, subtodos: this.todo.subtodos.filter((s: any) => s.id !== subId) };
       this.cdr.detectChanges();
     });
-  }
-
-  onDescClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).closest('a')) return;
-    this.startEditDesc();
   }
 
   // ── Comments ──────────────────────────────────────────
