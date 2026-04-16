@@ -1,6 +1,8 @@
 -- Replace global notify_app / notify_email / notify_toast with per-event email_* columns.
 -- on_* columns now mean "bell + toast"; email_* columns control per-event email delivery.
 
+DROP TABLE IF EXISTS notification_settings_new;
+
 CREATE TABLE notification_settings_new (
   id               TEXT    PRIMARY KEY,
   user_id          TEXT    NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
