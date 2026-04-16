@@ -1,15 +1,55 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Subject } from 'rxjs';
+import { SettingsService } from './settings.service';
+
+const HIDDEN_KEY = 'hidden_inbox_ids';
 
 @Injectable({ providedIn: 'root' })
 export class InboxStoreService {
+  private settings = inject(SettingsService);
+
   inboxes = signal<any[] | null>(null);
+
+  private hiddenIds = signal<Set<string>>(new Set());
+
+  visibleInboxes = computed(() =>
+    (this.inboxes() ?? []).filter((p) => !this.hiddenIds().has(p.id)),
+  );
+
+  hiddenInboxes = computed(() =>
+    (this.inboxes() ?? []).filter((p) => this.hiddenIds().has(p.id)),
+  );
 
   /** Emit to force the inbox component to re-fetch its task list. */
   readonly reload$ = new Subject<void>();
   triggerReload(): void { this.reload$.next(); }
 
   set(list: any[]): void { this.inboxes.set(list); }
+
+  /** Load hidden IDs from persisted settings. Call after settings are loaded. */
+  loadHidden(): void {
+    const raw = this.settings.get(HIDDEN_KEY);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    this.hiddenIds.set(new Set(ids));
+  }
+
+  hide(id: string): void {
+    this.hiddenIds.update((s) => new Set([...s, id]));
+    this.persistHidden();
+  }
+
+  unhide(id: string): void {
+    this.hiddenIds.update((s) => { const n = new Set(s); n.delete(id); return n; });
+    this.persistHidden();
+  }
+
+  isHidden(id: string): boolean {
+    return this.hiddenIds().has(id);
+  }
+
+  private persistHidden(): void {
+    this.settings.set(HIDDEN_KEY, JSON.stringify([...this.hiddenIds()]));
+  }
 
   /** Reorder the list to match a stored order of project IDs. Unknown IDs are appended at end. */
   applyOrder(ids: string[]): void {

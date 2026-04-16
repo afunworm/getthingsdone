@@ -78,7 +78,7 @@ import { APP_VERSION } from '../../version';
               <div class="nav-section">Inboxes</div>
             }
 
-          @for (inbox of store.inboxes() ?? []; track inbox.id; let i = $index) {
+          @for (inbox of store.visibleInboxes(); track inbox.id; let i = $index) {
             @if (reorderInsertBefore() === inbox.id) {
               <div class="reorder-line"></div>
             }
@@ -121,6 +121,14 @@ import { APP_VERSION } from '../../version';
                     <span class="inbox-count-badge">{{ cnt > 99 ? '99+' : cnt }}</span>
                   }
                 }
+                <!-- Hide inbox button -->
+                <button
+                  class="inbox-hide-btn"
+                  (click)="$event.preventDefault(); $event.stopPropagation(); store.hide(inbox.id)"
+                  title="Hide this inbox"
+                >
+                  <span class="material-icons" style="font-size:13px">visibility_off</span>
+                </button>
                 <!-- Per-project notification settings trigger -->
                 <button
                   class="notif-settings-btn"
@@ -140,6 +148,29 @@ import { APP_VERSION } from '../../version';
             <span class="material-icons nav-icon" style="font-size:14px">add</span>
             <span>New Inbox</span>
           </button>
+
+          <!-- Hidden inboxes section -->
+          @if (store.hiddenInboxes().length > 0) {
+            <button class="hidden-inboxes-toggle" (click)="hiddenExpanded.set(!hiddenExpanded())">
+              <span class="material-icons" style="font-size:13px">{{ hiddenExpanded() ? 'expand_less' : 'expand_more' }}</span>
+              Hidden ({{ store.hiddenInboxes().length }})
+            </button>
+            @if (hiddenExpanded()) {
+              @for (inbox of store.hiddenInboxes(); track inbox.id) {
+                <div class="nav-item hidden-inbox-row">
+                  <span class="inbox-dot" [style.background]="inbox.color || 'var(--accent-color)'" style="color:#fff;opacity:.5">
+                    {{ inbox.emoji || inbox.name[0].toUpperCase() }}
+                  </span>
+                  <span class="nav-label truncate" style="opacity:.5">{{ inbox.name }}</span>
+                  <button class="inbox-hide-btn" style="opacity:1"
+                    (click)="store.unhide(inbox.id)" title="Show this inbox">
+                    <span class="material-icons" style="font-size:13px">visibility</span>
+                  </button>
+                </div>
+              }
+            }
+          }
+
           </div><!-- /tour-inboxes-section -->
 
           <div class="nav-divider"></div>
@@ -560,7 +591,7 @@ import { APP_VERSION } from '../../version';
 
       /* Per-inbox notification button */
       .inbox-nav-item { position: relative; }
-      .notif-settings-btn {
+      .notif-settings-btn, .inbox-hide-btn {
         opacity: 0;
         transition: opacity 120ms;
         width: 20px; height: 20px;
@@ -569,6 +600,19 @@ import { APP_VERSION } from '../../version';
         display: flex; align-items: center; justify-content: center;
         color: var(--text-muted); flex-shrink: 0;
         &:hover { color: var(--accent-color); background: var(--surface-hover); }
+      }
+      .hidden-inboxes-toggle {
+        display: flex; align-items: center; gap: 4px;
+        width: 100%; padding: 4px 10px; border: 0;
+        background: transparent; cursor: pointer;
+        font-family: inherit; font-size: 11px;
+        color: var(--text-muted); text-align: left;
+        border-radius: 6px; transition: color 100ms;
+        &:hover { color: var(--text-secondary); }
+      }
+      .hidden-inbox-row {
+        cursor: default;
+        &:hover .inbox-hide-btn { opacity: 1; }
       }
 
       /* Drag-to-reorder grip */
@@ -582,7 +626,8 @@ import { APP_VERSION } from '../../version';
         margin-right: -2px;
       }
       .nav-item:hover .inbox-grip { opacity: 1; }
-      .nav-item:hover .notif-settings-btn { opacity: 1; }
+      .nav-item:hover .notif-settings-btn,
+      .nav-item:hover .inbox-hide-btn { opacity: 1; }
       .reorder-ghost { opacity: 0.35; pointer-events: none; }
       .reorder-line {
         height: 2px; margin: 0 8px;
@@ -1067,6 +1112,11 @@ export class ShellComponent implements OnInit, OnDestroy {
     document.title = count > 0 ? `(${count}) Get Things Done` : 'Get Things Done';
   });
 
+  // Load hidden inbox IDs once settings are ready
+  private readonly _hiddenEffect = effect(() => {
+    if (this.settings.loaded()) this.store.loadHidden();
+  });
+
   // Notification panel
   notifPanelOpen = signal(false);
 
@@ -1079,6 +1129,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   // Per-project notification settings popover
   projNotifOpen     = signal(false);
+  hiddenExpanded    = signal(false);
   projNotifInbox    = signal<any>(null);
   projNotifX        = signal(0);
   projNotifY        = signal(0);
