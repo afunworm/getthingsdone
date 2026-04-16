@@ -1,17 +1,18 @@
 import {
-  Component, Input, Output, EventEmitter, inject, signal, HostListener, OnChanges, SimpleChanges,
+  Component, Input, Output, EventEmitter, inject, signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { Dialog } from '@angular/cdk/dialog';
 import { ApiService } from '../../../core/services/api.service';
 import { DragStateService } from '../../../core/services/drag-state.service';
 import { AppDropEvent, DropZoneDirective, DraggableDirective, DragHandleDirective } from '../../../core/drag-drop';
-import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
+import { Assignees } from '../assign-dialog/assign-dialog.component';
 import { PriorityService } from '../../../core/services/priority.service';
-import { UserPrefsService } from '../../../core/services/user-prefs.service';
-import { NotificationService } from '../../../core/services/notification.service';
+import { PriorityPickerComponent } from '../priority-picker/priority-picker.component';
+import { AssignPickerComponent } from '../assign-picker/assign-picker.component';
+import { DueDateSectionComponent } from '../due-date-section/due-date-section.component';
+import { RemindersSectionComponent } from '../reminders-section/reminders-section.component';
 
 export interface FlowStep { label: string; color: string; bg: string; }
 
@@ -34,7 +35,7 @@ export interface SubtaskDroppedEvent {
 @Component({
   selector: 'app-todo-item',
   standalone: true,
-  imports: [CommonModule, FormsModule, DropZoneDirective, DraggableDirective, DragHandleDirective],
+  imports: [CommonModule, FormsModule, DropZoneDirective, DraggableDirective, DragHandleDirective, PriorityPickerComponent, AssignPickerComponent, DueDateSectionComponent, RemindersSectionComponent],
   template: `
     <div class="todo-wrap"
       [id]="'tour-task-' + todo.id"
@@ -151,145 +152,33 @@ export interface SubtaskDroppedEvent {
 
           <!-- Assign (projects only — personal inbox is private) -->
           @if (todo.project_id) {
-            <button
-              class="btn-action"
-              [class.btn-assigned]="isAssigned(todo)"
-              (click)="openAssign(todo)"
-              title="Assign task"
-            >
-              <span class="material-icons" style="font-size:15px">person</span>
-            </button>
+            <app-assign-picker
+              [todo]="todo"
+              [compact]="true"
+              (updated)="assigned.emit($event)"
+            ></app-assign-picker>
           }
 
           <!-- Due date / schedule -->
-          <div class="sch-wrap">
-            <button
-              class="btn-action"
-              [id]="'task-sch-btn-' + todo.id"
-              [class.btn-sch-active]="todo.due_date || todo.is_recurring"
-              (click)="toggleSchedule($event)"
-              title="Due date / recurring"
-            >
-              <span class="material-icons" style="font-size:14px">event</span>
-            </button>
-            @if (schedOpen()) {
-              <div class="sch-popover" (click)="$event.stopPropagation()">
-                <div class="sch-field">
-                  <span class="material-icons" style="font-size:13px;color:var(--text-muted)">event</span>
-                  <input type="date" class="sch-date-inp" [(ngModel)]="schDueDate" />
-                  @if (schDueDate) {
-                    <button class="sch-x" (click)="schDueDate = ''">
-                      <span class="material-icons" style="font-size:11px">close</span>
-                    </button>
-                  }
-                </div>
-                <div class="sch-field">
-                  <span class="material-icons" style="font-size:13px;color:var(--text-muted)">repeat</span>
-                  <label class="sch-lbl">
-                    <input type="checkbox" [(ngModel)]="schRecurring" />
-                    Recurring
-                  </label>
-                </div>
-                @if (schRecurring) {
-                  <div class="sch-field sch-recur">
-                    <span style="font-size:11px;color:var(--text-muted)">Every</span>
-                    <input type="number" class="sch-num" [(ngModel)]="schInterval" min="1" />
-                    <select class="sch-sel" [(ngModel)]="schType">
-                      <option value="daily">days</option>
-                      <option value="weekly">weeks</option>
-                      <option value="monthly">months</option>
-                      <option value="yearly">years</option>
-                    </select>
-                  </div>
-                }
-                @if (schRecurring && !schDueDate) {
-                  <p class="sch-recur-warn">
-                    <span class="material-icons" style="font-size:12px">warning</span>
-                    Due date required for recurring tasks.
-                  </p>
-                }
-                <div class="sch-footer">
-                  <button class="sch-save-btn" [disabled]="schRecurring && !schDueDate" (click)="saveSchedule()">Save</button>
-                </div>
-              </div>
-            }
-          </div>
+          <app-due-date-section
+            [todo]="todo"
+            [compact]="true"
+            (updated)="assigned.emit($event)"
+          ></app-due-date-section>
 
           <!-- Priority -->
-          <div class="pri-wrap">
-            <button
-              class="btn-action"
-              [id]="'task-pri-btn-' + todo.id"
-              [class.btn-pri-active]="todo.priority > 0"
-              [style.color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) : ''"
-              (click)="togglePriority($event)"
-              [title]="todo.priority > 0 ? prioritySvc.getLabel(todo.priority) : 'Set priority'"
-            >
-              <span class="material-icons" style="font-size:14px">priority_high</span>
-            </button>
-            @if (priorityOpen()) {
-              <div class="pri-popover" (click)="$event.stopPropagation()">
-                <p class="rem-title">Priority</p>
-                <button class="pri-opt" [class.pri-opt-active]="todo.priority === 0" (click)="setPriority(0)">
-                  <span class="material-icons" style="font-size:13px;color:var(--text-muted)">priority_high</span>
-                  <span>None</span>
-                  @if (todo.priority === 0) { <span class="material-icons" style="font-size:13px;margin-left:auto">check</span> }
-                </button>
-                @for (lvl of prioritySvc.levels(); track lvl.value) {
-                  <button class="pri-opt" [class.pri-opt-active]="todo.priority === lvl.value" (click)="setPriority(lvl.value)">
-                    <span class="material-icons" style="font-size:13px" [style.color]="lvl.color">priority_high</span>
-                    <span [style.color]="lvl.color">{{ lvl.label }}</span>
-                    @if (todo.priority === lvl.value) { <span class="material-icons" style="font-size:13px;margin-left:auto;color:var(--text-secondary)">check</span> }
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-priority-picker
+            [todo]="todo"
+            [compact]="true"
+            (updated)="assigned.emit($event)"
+          ></app-priority-picker>
 
           <!-- Reminder -->
-          <div class="rem-wrap">
-            <button
-              class="btn-action"
-              [id]="'task-rem-btn-' + todo.id"
-              [class.btn-rem-active]="todo.reminder_count > 0"
-              (click)="toggleReminder($event)"
-              [title]="todo.reminder_count > 0 ? todo.reminder_count + ' active reminder(s)' : 'Set reminder'"
-            >
-              <span class="material-icons" style="font-size:14px">alarm</span>
-            </button>
-            @if (reminderOpen()) {
-              <div class="rem-popover" (click)="$event.stopPropagation()">
-                <p class="rem-title">Remind me</p>
-                @if (activeReminders().length) {
-                  <div class="rem-active-list">
-                    @for (r of activeReminders(); track r.id) {
-                      <div class="rem-active-row">
-                        <span class="material-icons" style="font-size:12px;color:#f57c00;flex-shrink:0">alarm</span>
-                        <span class="rem-active-label">{{ r.label || (r.remind_at * 1000 | date:'MMM d, h:mm a') }}</span>
-                        <button class="rem-active-del" (click)="deleteReminder(r.id)" title="Remove">
-                          <span class="material-icons" style="font-size:11px">close</span>
-                        </button>
-                      </div>
-                    }
-                  </div>
-                  <div class="rem-divider"></div>
-                }
-                <button class="rem-btn" (click)="setReminder(1, 'day')">In 1 day</button>
-                <button class="rem-btn" (click)="setReminder(3, 'day')">In 3 days</button>
-                <button class="rem-btn" (click)="setReminder(1, 'week')">In 1 week</button>
-                <div class="rem-divider"></div>
-                <div class="rem-custom">
-                  <input
-                    type="datetime-local"
-                    class="rem-datetime"
-                    [(ngModel)]="customRemindAt"
-                    [min]="minDatetime"
-                  />
-                  <button class="rem-set-btn" [disabled]="!customRemindAt" (click)="setCustomReminder()">Set</button>
-                </div>
-              </div>
-            }
-          </div>
+          <app-reminders-section
+            [todo]="todo"
+            [compact]="true"
+            (todoChanged)="onReminderChanged($event)"
+          ></app-reminders-section>
 
           <!-- Delete -->
           <button class="btn-action btn-danger" [id]="'task-del-btn-' + todo.id" (click)="delete.emit(todo.id)" title="Delete">
@@ -348,14 +237,11 @@ export interface SubtaskDroppedEvent {
             <!-- Sub right: Assign (projects only) + Done + Delete -->
             <div class="sub-right" (click)="$event.stopPropagation()">
               @if (sub.project_id) {
-                <button
-                  class="btn-action"
-                  [class.btn-assigned]="isAssigned(sub)"
-                  (click)="openAssign(sub)"
-                  title="Assign"
-                >
-                  <span class="material-icons" style="font-size:13px">person</span>
-                </button>
+                <app-assign-picker
+                  [todo]="sub"
+                  [compact]="true"
+                  (updated)="assigned.emit($event)"
+                ></app-assign-picker>
               }
               <button class="btn-action" [class.btn-done-active]="isSubDone(sub)"
                       (click)="isSubDone(sub) ? undone(sub) : complete.emit(sub)"
@@ -471,65 +357,6 @@ export interface SubtaskDroppedEvent {
       color: var(--text-muted);
       &:hover:not(:disabled) { color: #d32f2f; background: #fde8e8; }
     }
-    .btn-sch-active { color: var(--accent-color); }
-
-    /* Quick-schedule popover */
-    .sch-wrap { position: relative; }
-    .sch-popover {
-      position: absolute; top: calc(100% + 4px); right: 0;
-      background: var(--surface-card); border: 1px solid var(--surface-border);
-      border-radius: 8px; box-shadow: var(--shadow-md);
-      padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
-      min-width: 210px; z-index: 100;
-    }
-    .sch-field {
-      display: flex; align-items: center; gap: 6px;
-    }
-    .sch-recur { padding-left: 19px; }
-    .sch-date-inp {
-      flex: 1; padding: 3px 6px; border: 1px solid var(--surface-border); border-radius: 5px;
-      background: var(--surface-hover); font-family: inherit; font-size: 11px;
-      color: var(--text-primary); outline: none;
-      &:focus { border-color: var(--accent-color); }
-    }
-    .sch-x {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 18px; height: 18px; border: 0; border-radius: 3px;
-      background: transparent; color: var(--text-muted); cursor: pointer;
-      &:hover { background: var(--surface-hover); color: var(--text-primary); }
-    }
-    .sch-lbl {
-      display: flex; align-items: center; gap: 4px;
-      font-size: 11px; color: var(--text-secondary); cursor: pointer;
-      input { cursor: pointer; }
-    }
-    .sch-num {
-      width: 46px; padding: 2px 5px; border: 1px solid var(--surface-border); border-radius: 5px;
-      background: var(--surface-hover); font-family: inherit; font-size: 11px;
-      color: var(--text-primary); outline: none; text-align: center;
-      &:focus { border-color: var(--accent-color); }
-    }
-    .sch-sel {
-      padding: 2px 5px; border: 1px solid var(--surface-border); border-radius: 5px;
-      background: var(--surface-hover); font-family: inherit; font-size: 11px;
-      color: var(--text-primary); outline: none; cursor: pointer;
-      &:focus { border-color: var(--accent-color); }
-    }
-    .sch-footer {
-      display: flex; justify-content: flex-end; padding-top: 4px;
-      border-top: 1px solid var(--surface-border); margin-top: 2px;
-    }
-    .sch-save-btn {
-      padding: 3px 12px; border-radius: 5px; border: none; cursor: pointer;
-      background: var(--accent-color); color: #fff;
-      font-family: inherit; font-size: 11px; font-weight: 600;
-      &:hover:not(:disabled) { opacity: 0.9; }
-      &:disabled { opacity: 0.4; cursor: default; }
-    }
-    .sch-recur-warn {
-      display: flex; align-items: center; gap: 4px; margin: 2px 0 4px;
-      font-size: 11px; color: #e65100;
-    }
 
     /* ── Priority borders & backgrounds ─────────────── */
     @property --ba {
@@ -563,83 +390,8 @@ export interface SubtaskDroppedEvent {
       &:hover { border-color: #ffb74d; box-shadow: var(--shadow-sm); }
     }
 
-    /* ── Priority popover ────────────────────────────── */
-    .btn-pri-active { }
-    .pri-wrap { position: relative; }
-    .pri-popover {
-      position: absolute; top: calc(100% + 4px); right: 0;
-      background: var(--surface-card); border: 1px solid var(--surface-border);
-      border-radius: 8px; box-shadow: var(--shadow-md);
-      padding: 6px; display: flex; flex-direction: column; gap: 1px;
-      min-width: 140px; z-index: 100;
-    }
-    .pri-opt {
-      display: flex; align-items: center; gap: 7px;
-      width: 100%; padding: 5px 8px; border: 0; border-radius: 5px;
-      background: transparent; cursor: pointer; text-align: left;
-      font-family: inherit; font-size: 12px; color: var(--text-secondary);
-      transition: background 80ms;
-      &:hover { background: var(--surface-hover); }
-      &.pri-opt-active { background: var(--surface-hover); }
-    }
-
-    /* ── Reminder popover ────────────────────────────── */
-    .btn-rem-active { color: #f57c00 !important; }
+    /* ── Reminder meta chip ─────────────────────────── */
     .meta-chip--reminder { color: #f57c00; }
-
-    .rem-wrap { position: relative; }
-    .rem-popover {
-      position: absolute; top: calc(100% + 4px); right: 0;
-      background: var(--surface-card); border: 1px solid var(--surface-border);
-      border-radius: 8px; box-shadow: var(--shadow-md);
-      padding: 6px; display: flex; flex-direction: column; gap: 3px;
-      min-width: 190px; z-index: 100;
-    }
-    .rem-title {
-      margin: 0 0 4px; padding: 0 4px;
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .4px; color: var(--text-muted);
-    }
-    .rem-btn {
-      width: 100%; padding: 5px 8px; border: 0; border-radius: 5px;
-      background: transparent; cursor: pointer; text-align: left;
-      font-family: inherit; font-size: 12px; color: var(--text-secondary);
-      transition: background 80ms, color 80ms;
-      &:hover { background: var(--surface-hover); color: var(--text-primary); }
-    }
-    .rem-active-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 2px; }
-    .rem-active-row {
-      display: flex; align-items: center; gap: 5px;
-      padding: 3px 4px; border-radius: 4px;
-      background: color-mix(in srgb, #f57c00 8%, transparent);
-    }
-    .rem-active-label { flex: 1; font-size: 11px; color: var(--text-secondary); }
-    .rem-active-del {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 16px; height: 16px; border: 0; border-radius: 3px;
-      background: transparent; cursor: pointer; color: var(--text-muted); flex-shrink: 0;
-      &:hover { background: var(--surface-hover); color: #d32f2f; }
-    }
-    .rem-divider {
-      height: 1px; background: var(--surface-border); margin: 3px 0;
-    }
-    .rem-custom {
-      display: flex; gap: 4px; align-items: center; padding: 2px 2px 0;
-    }
-    .rem-datetime {
-      flex: 1; min-width: 0;
-      padding: 4px 6px; border: 1px solid var(--surface-border); border-radius: 5px;
-      background: var(--surface-hover); color: var(--text-primary);
-      font-family: inherit; font-size: 11px; outline: none;
-      &:focus { border-color: var(--accent-color); }
-    }
-    .rem-set-btn {
-      padding: 4px 10px; border-radius: 5px; border: none; cursor: pointer;
-      background: var(--accent-color); color: #fff;
-      font-family: inherit; font-size: 11px; font-weight: 600; white-space: nowrap;
-      &:hover:not(:disabled) { opacity: .88; }
-      &:disabled { opacity: .45; cursor: default; }
-    }
 
     /* ── Subtasks ────────────────────────────────────── */
     .subtasks {
@@ -720,12 +472,9 @@ export interface SubtaskDroppedEvent {
 
   `],
 })
-export class TodoItemComponent implements OnChanges {
-  private dialog    = inject(Dialog);
+export class TodoItemComponent {
   private api       = inject(ApiService);
   dragState         = inject(DragStateService);
-  private userPrefs = inject(UserPrefsService);
-  private notifSvc  = inject(NotificationService);
 
   @Input({ required: true }) todo!: any;
   @Input() flowSteps: FlowStep[] = DEFAULT_STEPS;
@@ -742,31 +491,12 @@ export class TodoItemComponent implements OnChanges {
   quickSubtask = '';
   addingSubtask = signal(false);
 
-  // Quick schedule popover
-  schedOpen = signal(false);
-  schDueDate = '';
-  schRecurring = false;
-  schInterval = 1;
-  schType: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'weekly';
-
-  prioritySvc    = inject(PriorityService);
+  prioritySvc       = inject(PriorityService);
   private sanitizer = inject(DomSanitizer);
 
   sanitizeHtml(html: string): SafeHtml {
     const patched = html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
     return this.sanitizer.bypassSecurityTrustHtml(patched);
-  }
-
-  // Priority popover
-  priorityOpen   = signal(false);
-
-  // Quick reminder popover
-  reminderOpen   = signal(false);
-  activeReminders = signal<any[]>([]);
-  customRemindAt = '';
-  get minDatetime(): string {
-    const d = new Date(); d.setMinutes(d.getMinutes() + 5);
-    return d.toISOString().slice(0, 16);
   }
 
   // ── Helpers ──────────────────────────────────────────
@@ -820,127 +550,16 @@ export class TodoItemComponent implements OnChanges {
     return `${all[0]}, +${all.length - 1} more`;
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['todo'] && !this.schedOpen()) {
-      const t = changes['todo'].currentValue;
-      this.schDueDate   = t?.due_date ? new Date(t.due_date * 1000).toLocaleDateString('en-CA') : '';
-      this.schRecurring = !!t?.is_recurring;
-      this.schInterval  = t?.recurrence_rule?.interval ?? 1;
-      this.schType      = t?.recurrence_rule?.type ?? 'weekly';
-    }
-  }
-
-  @HostListener('document:click')
-  onDocClick(): void {
-    if (this.schedOpen()) this.schedOpen.set(false);
-    if (this.reminderOpen()) this.reminderOpen.set(false);
-    if (this.priorityOpen()) this.priorityOpen.set(false);
-  }
-
-  // ── Quick schedule ────────────────────────────────────
-  toggleSchedule(event: MouseEvent): void {
-    event.stopPropagation();
-    this.reminderOpen.set(false);
-    if (!this.schedOpen()) {
-      this.schDueDate   = this.todo.due_date
-        ? new Date(this.todo.due_date * 1000).toLocaleDateString('en-CA') : '';
-      this.schRecurring = !!this.todo.is_recurring;
-      this.schInterval  = this.todo.recurrence_rule?.interval ?? 1;
-      this.schType      = this.todo.recurrence_rule?.type ?? 'weekly';
-    }
-    this.schedOpen.update((v) => !v);
-  }
-
   undone(todo: any): void {
     this.api.patch<any>(`/todos/${todo.id}/set-step`, { stepIndex: 0 }).subscribe((updated) => {
       this.assigned.emit(updated);
     });
   }
 
-  saveSchedule(): void {
-    const prevDueDateStr = this.todo.due_date
-      ? new Date(this.todo.due_date * 1000).toLocaleDateString('en-CA') : '';
-    const dueDate = this.schDueDate
-      ? Math.floor(new Date(this.schDueDate + 'T00:00:00').getTime() / 1000) : null;
-    const recurrenceRule = this.schRecurring
-      ? { interval: this.schInterval, type: this.schType } : null;
-    this.api.patch<any>(`/todos/${this.todo.id}`, {
-      dueDate, isRecurring: this.schRecurring, recurrenceRule,
-    }).subscribe((updated) => {
-      this.schedOpen.set(false);
-      this.assigned.emit(updated);
-      // Auto-create a reminder when a due date is newly set
-      if (this.schDueDate && this.schDueDate !== prevDueDateStr) {
-        this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((reminders) => {
-          const hasExisting = reminders.some((r) => r.label === 'Due date' && !r.sent);
-          if (!hasExisting) {
-            this.userPrefs.load();
-            const remindAtStr = this.userPrefs.calcDueReminderDatetime(this.schDueDate);
-            const remindAt = Math.floor(new Date(remindAtStr).getTime() / 1000);
-            const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
-            this.api.post(`/notifications/reminders/${this.todo.id}`, {
-              remindAt, label: 'Due date', notifyEmail,
-            }).subscribe(() => {
-              this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
-            });
-          }
-        });
-      }
-    });
-  }
-
-  // ── Quick reminder ────────────────────────────────────
-  toggleReminder(event: MouseEvent): void {
-    event.stopPropagation();
-    this.schedOpen.set(false);
-    if (!this.reminderOpen()) {
-      this.customRemindAt = '';
-      this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((r) =>
-        this.activeReminders.set(r.filter((x) => !x.sent)),
-      );
+  onReminderChanged(partial: Partial<any>): void {
+    if (partial['reminder_count'] !== undefined) {
+      this.todo.reminder_count = partial['reminder_count'];
     }
-    this.reminderOpen.update((v) => !v);
-  }
-
-  deleteReminder(id: string): void {
-    this.api.delete(`/notifications/reminders/item/${id}`).subscribe(() => {
-      this.activeReminders.update((list) => list.filter((r) => r.id !== id));
-      this.todo.reminder_count = Math.max(0, (this.todo.reminder_count ?? 1) - 1);
-    });
-  }
-
-  setReminder(amount: number, unit: 'day' | 'week'): void {
-    const ms = unit === 'day' ? amount * 86400000 : amount * 7 * 86400000;
-    const remindAt = Math.floor((Date.now() + ms) / 1000);
-    const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
-    this.api.post(`/notifications/reminders/${this.todo.id}`, { remindAt, label }).subscribe(() => {
-      this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
-    });
-    this.reminderOpen.set(false);
-  }
-
-  setCustomReminder(): void {
-    if (!this.customRemindAt) return;
-    const remindAt = Math.floor(new Date(this.customRemindAt).getTime() / 1000);
-    this.api.post(`/notifications/reminders/${this.todo.id}`, { remindAt }).subscribe(() => {
-      this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
-    });
-    this.reminderOpen.set(false);
-    this.customRemindAt = '';
-  }
-
-  // ── Priority ──────────────────────────────────────────
-  togglePriority(event: MouseEvent): void {
-    event.stopPropagation();
-    this.schedOpen.set(false);
-    this.reminderOpen.set(false);
-    this.priorityOpen.update((v) => !v);
-  }
-
-  setPriority(priority: number): void {
-    this.todo.priority = priority;
-    this.priorityOpen.set(false);
-    this.api.patch(`/todos/${this.todo.id}`, { priority }).subscribe();
   }
 
   // ── Quick-add subtask ─────────────────────────────────
@@ -1025,17 +644,4 @@ export class TodoItemComponent implements OnChanges {
     }
   }
 
-  // ── Assign dialog ─────────────────────────────────────
-  openAssign(todo: any): void {
-    const ref = this.dialog.open(AssignDialogComponent, {
-      width: '580px', maxHeight: '70vh', hasBackdrop: true,
-      backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { todoId: todo.id, assignees: todo.assignees ?? { users: [], teams: [] }, projectId: todo.project_id ?? null },
-    });
-    ref.closed.subscribe((result: any) => {
-      if (result !== undefined) {
-        this.assigned.emit({ id: todo.id, assignees: result });
-      }
-    });
-  }
 }

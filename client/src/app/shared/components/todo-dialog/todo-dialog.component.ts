@@ -11,8 +11,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { PriorityService } from '../../../core/services/priority.service';
 import { UserPrefsService } from '../../../core/services/user-prefs.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
+import { AssignDialogComponent } from '../assign-dialog/assign-dialog.component';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { PriorityPickerComponent } from '../priority-picker/priority-picker.component';
+import { AssignPickerComponent } from '../assign-picker/assign-picker.component';
+import { DueDateSectionComponent } from '../due-date-section/due-date-section.component';
+import { RemindersSectionComponent } from '../reminders-section/reminders-section.component';
 
 interface StepDef { label: string; color: string; bg: string; }
 const DEFAULT_STEPS: StepDef[] = [
@@ -24,7 +28,7 @@ const DEFAULT_STEPS: StepDef[] = [
 @Component({
   selector: 'app-todo-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, RichTextEditorComponent],
+  imports: [CommonModule, FormsModule, RichTextEditorComponent, PriorityPickerComponent, AssignPickerComponent, DueDateSectionComponent, RemindersSectionComponent],
   template: `
     <div class="dialog-card">
 
@@ -109,41 +113,19 @@ const DEFAULT_STEPS: StepDef[] = [
 
           <!-- Assignees (projects only — personal inbox is private) -->
           @if (todo.project_id) {
-            <button class="meta-chip" [class.meta-assigned]="hasAssignees" (click)="openAssign()">
-              <span class="material-icons" style="font-size:12px">person</span>
-              {{ assigneeLabel }}
-            </button>
+            <app-assign-picker
+              [todo]="todo"
+              [compact]="false"
+              (updated)="onTodoUpdated($event)"
+            ></app-assign-picker>
           }
 
           <!-- Priority -->
-          <div class="pri-wrap">
-            <button class="meta-chip meta-pri-btn"
-              [class.meta-pri-active]="todo.priority > 0"
-              [style.color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) : ''"
-              [style.border-color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) + '55' : ''"
-              (click)="priorityOpen.set(!priorityOpen())"
-              title="Set priority">
-              <span class="material-icons" style="font-size:12px">priority_high</span>
-              {{ todo.priority > 0 ? prioritySvc.getLabel(todo.priority) : 'Priority' }}
-            </button>
-            @if (priorityOpen()) {
-              <div class="pri-backdrop" (click)="priorityOpen.set(false)"></div>
-              <div class="pri-menu">
-                <button class="pri-opt" [class.pri-opt-active]="todo.priority === 0" (click)="setPriority(0)">
-                  <span class="material-icons" style="font-size:13px;color:var(--text-muted)">priority_high</span>
-                  None
-                  @if (todo.priority === 0) { <span class="material-icons" style="font-size:13px;margin-left:auto">check</span> }
-                </button>
-                @for (lvl of prioritySvc.levels(); track lvl.value) {
-                  <button class="pri-opt" [class.pri-opt-active]="todo.priority === lvl.value" (click)="setPriority(lvl.value)">
-                    <span class="material-icons" style="font-size:13px" [style.color]="lvl.color">priority_high</span>
-                    {{ lvl.label }}
-                    @if (todo.priority === lvl.value) { <span class="material-icons" style="font-size:13px;margin-left:auto;color:var(--text-secondary)">check</span> }
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-priority-picker
+            [todo]="todo"
+            [compact]="false"
+            (updated)="onTodoUpdated($event)"
+          ></app-priority-picker>
 
           <!-- Recurring (display only — edit in Schedule section) -->
           @if (todo.is_recurring) {
@@ -244,33 +226,24 @@ const DEFAULT_STEPS: StepDef[] = [
         </div>
 
         <!-- ── Due Date / Schedule ────────────────────────── -->
-        <div class="section">
-          <div class="section-hdr">
-            <span class="section-label">Due Date</span>
-          </div>
-          <div class="sch-body">
-            <div class="sch-grid">
-              <div class="sch-row">
-                <span class="material-icons sch-icon">event</span>
-                @if (isCreate) {
+        @if (isCreate) {
+          <div class="section">
+            <div class="section-hdr">
+              <span class="section-label">Due Date</span>
+            </div>
+            <div class="sch-body">
+              <div class="sch-grid">
+                <div class="sch-row">
+                  <span class="material-icons sch-icon">event</span>
                   <input type="date" class="sch-date-input" [(ngModel)]="form.dueDateStr" (ngModelChange)="onDueDateChange($event)" />
                   @if (form.dueDateStr) {
                     <button class="sch-clear" (click)="onDueDateChange('')" title="Clear due date">
                       <span class="material-icons" style="font-size:12px">close</span>
                     </button>
                   }
-                } @else {
-                  <input type="date" class="sch-date-input" [ngModel]="schedDueDate()" (ngModelChange)="onDueDateChange($event)" />
-                  @if (schedDueDate()) {
-                    <button class="sch-clear" (click)="onDueDateChange('')" title="Clear due date">
-                      <span class="material-icons" style="font-size:12px">close</span>
-                    </button>
-                  }
-                }
-              </div>
-              <div class="sch-row">
-                <span class="material-icons sch-icon">repeat</span>
-                @if (isCreate) {
+                </div>
+                <div class="sch-row">
+                  <span class="material-icons sch-icon">repeat</span>
                   <label class="sch-toggle-label">
                     <input type="checkbox" [(ngModel)]="form.isRecurring" />
                     Recurring
@@ -285,99 +258,44 @@ const DEFAULT_STEPS: StepDef[] = [
                       <option value="yearly">years</option>
                     </select>
                   }
-                } @else {
-                  <label class="sch-toggle-label">
-                    <input type="checkbox" [ngModel]="schedRecurring()" (ngModelChange)="schedRecurring.set($event)" />
-                    Recurring
-                  </label>
-                  @if (schedRecurring()) {
-                    <span class="sch-every">every</span>
-                    <input type="number" class="sch-num" min="1"
-                      [ngModel]="schedInterval()" (ngModelChange)="schedInterval.set(+$event)" />
-                    <select class="sch-type" [ngModel]="schedType()" (ngModelChange)="schedType.set($event)">
-                      <option value="daily">days</option>
-                      <option value="weekly">weeks</option>
-                      <option value="monthly">months</option>
-                      <option value="yearly">years</option>
-                    </select>
+                </div>
+              </div>
+              @if (createNextOccurrences.length) {
+                <div class="sch-occurrences">
+                  <span class="sch-occ-label">Next occurrences</span>
+                  @for (d of createNextOccurrences; track d) {
+                    <span class="sch-occ-date">{{ d }}</span>
                   }
-                }
-              </div>
+                </div>
+              }
             </div>
-            @if (isCreate ? createNextOccurrences.length : nextOccurrences().length) {
-              <div class="sch-occurrences">
-                <span class="sch-occ-label">Next occurrences</span>
-                @for (d of (isCreate ? createNextOccurrences : nextOccurrences()); track d) {
-                  <span class="sch-occ-date">{{ d }}</span>
-                }
-              </div>
+            @if (form.isRecurring && !form.dueDateStr) {
+              <p class="recur-warn">
+                <span class="material-icons" style="font-size:13px">warning</span>
+                A due date is required for recurring tasks.
+              </p>
             }
           </div>
-          @if ((isCreate ? form.isRecurring : schedRecurring()) && !(isCreate ? form.dueDateStr : schedDueDate())) {
-            <p class="recur-warn" style="margin-top:6px">
-              <span class="material-icons" style="font-size:13px">warning</span>
-              A due date is required for recurring tasks.
-            </p>
-          }
-          @if (!isCreate) {
-            @if (schedSaved()) {
-              <div class="sch-saved-msg">
-                <span class="material-icons" style="font-size:13px">check_circle</span>
-                Saved
-              </div>
-            } @else if (schedDirty()) {
-              <div class="inline-actions" style="margin-top:8px">
-                <button class="btn btn-primary btn-sm"
-                  [disabled]="schedRecurring() && !schedDueDate()"
-                  (click)="saveSchedule()">Save</button>
-                <button class="btn btn-ghost btn-sm" (click)="resetSchedule()">Cancel</button>
-              </div>
-            }
-          }
-        </div>
+        } @else {
+          <app-due-date-section
+            [todo]="todo"
+            (updated)="onTodoUpdated($event)"
+            (dueDateDraftChanged)="pendingDueDateStr.set($event)"
+          ></app-due-date-section>
+        }
 
         <!-- ── Reminders ──────────────────────────────────── -->
-        <div class="section">
-          <div class="section-hdr">
-            <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
-            <span class="section-label">Reminders</span>
-            <span class="section-count">{{ isCreate ? form.pendingReminders.length : reminders().length }}</span>
-          </div>
-          @if (!isCreate) {
-            @if (pendingDueDateReminder(); as pending) {
-              <div class="reminder-row reminder-pending"
-                [class.reminder-new]="animatingReminderIds().has('pending-due')">
-                <span class="material-icons" style="font-size:14px;color:#f57c00">alarm_add</span>
-                @if (editingReminderId() === 'pending-due') {
-                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
-                    [value]="pending.remindAt"
-                    (change)="onPendingReminderTimeChange($event)"
-                    (blur)="editingReminderId.set(null)"
-                    (keydown.escape)="editingReminderId.set(null)" />
-                } @else {
-                  <span class="reminder-time reminder-time-editable"
-                    (click)="editingReminderId.set('pending-due')" title="Click to change time">
-                    Due date — {{ formatCreateReminder(pending.remindAt) }}
-                  </span>
-                }
-                <span class="reminder-pending-badge">pending save</span>
-                <button class="btn-icon reminder-email-toggle" [class.active]="pending.notifyEmail"
-                  (click)="togglePendingEmail()"
-                  [title]="pending.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
-                  <span class="material-icons" style="font-size:13px">email</span>
-                  <span class="reminder-email-label">Email</span>
-                </button>
-                <button class="btn-icon reminder-del" (click)="pendingDueDateReminder.set(null)" title="Remove reminder">
-                  <span class="material-icons" style="font-size:13px">close</span>
-                </button>
-              </div>
+        @if (isCreate) {
+          <div class="section">
+            <div class="section-hdr">
+              <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
+              <span class="section-label">Reminders</span>
+              <span class="section-count">{{ form.pendingReminders.length }}</span>
+            </div>
+            @if (form.pendingReminders.length) {
+              <p class="reminder-edit-hint">Click a reminder time to change it.</p>
             }
-          }
-          @if (isCreate ? form.pendingReminders.length : (reminders().length || pendingDueDateReminder())) {
-            <p class="reminder-edit-hint">Click a reminder time to change it.</p>
-          }
-          <div class="reminder-quick">
-            @if (isCreate) {
+            <div class="reminder-quick">
               <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'day')">In 1 day</button>
               <button class="reminder-quick-btn" (click)="addCreateReminderIn(3, 'day')">In 3 days</button>
               <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'week')">In 1 week</button>
@@ -386,18 +304,7 @@ const DEFAULT_STEPS: StepDef[] = [
               @if (createCustomReminderDate) {
                 <button class="btn btn-primary btn-sm" (click)="addCreateCustomReminder()">Set</button>
               }
-            } @else {
-              <button class="reminder-quick-btn" (click)="addReminderIn(1, 'day')">In 1 day</button>
-              <button class="reminder-quick-btn" (click)="addReminderIn(3, 'day')">In 3 days</button>
-              <button class="reminder-quick-btn" (click)="addReminderIn(1, 'week')">In 1 week</button>
-              <span class="reminder-sep">or</span>
-              <input type="datetime-local" class="reminder-date-input" [(ngModel)]="customReminderDate" />
-              @if (customReminderDate) {
-                <button class="btn btn-primary btn-sm" (click)="addCustomReminder()">Set</button>
-              }
-            }
-          </div>
-          @if (isCreate) {
+            </div>
             @for (r of form.pendingReminders; track r.id) {
               <div class="reminder-row reminder-pending" [class.reminder-new]="animatingReminderIds().has(r.id)">
                 <span class="material-icons" style="font-size:14px;color:#f57c00">alarm_add</span>
@@ -425,45 +332,14 @@ const DEFAULT_STEPS: StepDef[] = [
                 </button>
               </div>
             }
-          } @else {
-            @for (r of reminders(); track r.id) {
-              <div class="reminder-row" [class.reminder-sent]="r.sent"
-                [class.reminder-new]="animatingReminderIds().has(r.id)">
-                <span class="material-icons" style="font-size:14px;color:var(--text-muted)">
-                  {{ r.sent ? 'check_circle' : 'alarm' }}
-                </span>
-                @if (!r.sent && editingReminderId() === r.id) {
-                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
-                    [value]="reminderToDatetimeLocal(r.remind_at)"
-                    (change)="saveReminderTime(r, $event)"
-                    (blur)="editingReminderId.set(null)"
-                    (keydown.escape)="editingReminderId.set(null)" />
-                } @else {
-                  <span class="reminder-time" [class.reminder-time-editable]="!r.sent"
-                    (click)="!r.sent && editingReminderId.set(r.id)" title="{{ r.sent ? '' : 'Click to change time' }}">
-                    {{ formatReminder(r) }}
-                  </span>
-                }
-                @if (r.sent) { <span class="reminder-sent-label">sent</span> }
-                @if (!r.sent) {
-                  <button class="btn-icon reminder-email-toggle"
-                    [class.active]="r.notify_email"
-                    (click)="toggleReminderEmail(r)"
-                    [title]="r.notify_email ? 'Email on (click to disable)' : 'Email off (click to enable)'">
-                    <span class="material-icons" style="font-size:13px">email</span>
-                    <span class="reminder-email-label">Email</span>
-                  </button>
-                  <button class="btn-icon reminder-del" (click)="deleteReminder(r.id)" title="Remove reminder">
-                    <span class="material-icons" style="font-size:13px">close</span>
-                  </button>
-                }
-              </div>
-            }
-            @if (reminders().length === 0 && !pendingDueDateReminder()) {
-              <p class="no-reminders">No reminders set</p>
-            }
-          }
-        </div>
+          </div>
+        } @else {
+          <app-reminders-section
+            [todo]="todo"
+            [pendingDueDate]="pendingDueDateStr()"
+            (todoChanged)="onTodoChanged($event)"
+          ></app-reminders-section>
+        }
 
         <!-- ── Assignees (create-only, projects only) ─────── -->
         @if (isCreate && !data.isInbox) {
@@ -882,11 +758,6 @@ const DEFAULT_STEPS: StepDef[] = [
       display: flex; align-items: center; gap: 5px; margin: -4px 0 10px;
       font-size: 12px; color: #e65100;
     }
-    .sch-saved-msg {
-      display: inline-flex; align-items: center; gap: 4px;
-      margin-top: 8px; font-size: 12px; font-weight: 500;
-      color: var(--color-success, #2e7d32);
-    }
     .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; input { cursor: pointer; } }
     .inline-num { width: 60px !important; }
     .inline-sel { width: 90px !important; }
@@ -961,12 +832,8 @@ const DEFAULT_STEPS: StepDef[] = [
       font-size: 10px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .4px; color: var(--text-muted); margin-bottom: 2px;
     }
-    .sch-occ-date {
-      font-size: 12px; color: var(--text-secondary);
-    }
-    .sch-row {
-      display: flex; align-items: center; gap: 8px;
-    }
+    .sch-occ-date { font-size: 12px; color: var(--text-secondary); }
+    .sch-row { display: flex; align-items: center; gap: 8px; }
     .sch-icon { font-size: 15px !important; color: var(--text-muted); flex-shrink: 0; }
     .sch-date-input {
       padding: 3px 8px; border: 1px solid var(--surface-border); border-radius: 6px;
@@ -1313,29 +1180,6 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .comment-compose { display: flex; flex-direction: column; gap: 6px; }
 
-    .pri-wrap { position: relative; }
-    .meta-pri-btn {
-      cursor: pointer;
-      &:hover { border-color: var(--accent-color); color: var(--accent-color); }
-    }
-    .meta-pri-active { font-weight: 600; }
-    .pri-backdrop { position: fixed; inset: 0; z-index: 50; }
-    .pri-menu {
-      position: absolute; top: calc(100% + 4px); left: 0;
-      background: var(--surface-card); border: 1px solid var(--surface-border);
-      border-radius: 8px; box-shadow: var(--shadow-md);
-      padding: 4px; min-width: 130px; z-index: 51;
-    }
-    .pri-opt {
-      display: flex; align-items: center; gap: 6px;
-      width: 100%; padding: 5px 10px; border: 0;
-      background: transparent; cursor: pointer;
-      font-family: inherit; font-size: 12px; color: var(--text-secondary);
-      text-align: left; border-radius: 5px; transition: background 100ms;
-      &:hover { background: var(--surface-hover); color: var(--text-primary); }
-      &.pri-opt-active { color: var(--text-primary); font-weight: 500; }
-    }
-
     .creator-wrap { position: relative; }
     .meta-creator-btn {
       cursor: pointer !important;
@@ -1393,7 +1237,6 @@ export class TodoDialogComponent implements OnInit {
       ? [...this.comments()].reverse()
       : this.comments()
   );
-  reminders = signal<any[]>([]);
   todoAttachments = signal<any[]>([]);
   accessibleUsers = signal<any[]>([]);
 
@@ -1402,7 +1245,6 @@ export class TodoDialogComponent implements OnInit {
   history = signal<any[]>([]);
   creatorPickerOpen = signal(false);
   stepPickerOpen    = signal(false);
-  priorityOpen      = signal(false);
   lightboxItem = signal<{ url: string; mimetype: string; name: string; safeUrl?: any } | null>(null);
   lightboxHtml = signal<any>(null);
   lightboxLoading = signal(false);
@@ -1410,7 +1252,6 @@ export class TodoDialogComponent implements OnInit {
   newComment = '';
   newSubtask = '';
   newCreateSubtask = '';
-  customReminderDate = '';
   editingReminderId = signal<string | null>(null);
 
   // Edit state
@@ -1419,51 +1260,11 @@ export class TodoDialogComponent implements OnInit {
   descDraft  = '';
   get descDirty(): boolean { return this.descDraft !== (this.todo?.description ?? ''); }
 
-  // Schedule section (local draft — not saved until Save is clicked)
-  schedDueDate   = signal('');
-  schedRecurring = signal(false);
-  schedInterval  = signal(1);
-  schedType      = signal<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
-  schedSaved     = signal(false);
-
-  // Pending due-date reminder: preview shown while schedule edit is unsaved
-  pendingDueDateReminder = signal<{ remindAt: string; notifyEmail: boolean; userEdited: boolean } | null>(null);
-  // IDs of reminder rows currently running the flash-in animation
+  // IDs of reminder rows currently running the flash-in animation (create mode)
   animatingReminderIds = signal<Set<string>>(new Set());
 
-  // Saved baseline as a signal so schedDirty computed re-runs when it changes
-  private savedSchedule = signal({ dueDate: '', recurring: false, interval: 1, type: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly' });
-
-  nextOccurrences = computed(() => {
-    if (!this.schedRecurring() || !this.schedDueDate()) return [];
-    const interval = this.schedInterval();
-    const type = this.schedType();
-    const dates: string[] = [];
-    let cur = new Date(this.schedDueDate() + 'T00:00:00');
-    for (let i = 0; i < 3; i++) {
-      const originalDay = cur.getDate();
-      const next = new Date(cur);
-      if (type === 'daily') {
-        next.setDate(next.getDate() + interval);
-      } else if (type === 'weekly') {
-        next.setDate(next.getDate() + interval * 7);
-      } else if (type === 'yearly') {
-        next.setDate(1);
-        next.setFullYear(next.getFullYear() + interval);
-        next.setMonth(cur.getMonth());
-        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-        next.setDate(Math.min(originalDay, daysInMonth));
-      } else {
-        next.setDate(1);
-        next.setMonth(next.getMonth() + interval);
-        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-        next.setDate(Math.min(originalDay, daysInMonth));
-      }
-      dates.push(next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
-      cur = next;
-    }
-    return dates;
-  });
+  // Pending due-date string forwarded to RemindersSection in edit mode
+  pendingDueDateStr = signal('');
 
   get createNextOccurrences(): string[] {
     if (!this.form.isRecurring || !this.form.dueDateStr) return [];
@@ -1495,16 +1296,6 @@ export class TodoDialogComponent implements OnInit {
     }
     return dates;
   }
-
-  schedDirty = computed(() => {
-    const s = this.savedSchedule();
-    return this.schedDueDate()   !== s.dueDate   ||
-           this.schedRecurring() !== s.recurring ||
-           (this.schedRecurring() && (
-             this.schedInterval() !== s.interval ||
-             this.schedType()     !== s.type
-           ));
-  });
 
   // Create form
   form = {
@@ -1558,21 +1349,6 @@ export class TodoDialogComponent implements OnInit {
     return next ? next.label : 'Done';
   }
 
-  get assigneeLabel(): string {
-    const a = this.todo.assignees as Assignees | undefined;
-    if (!a) return 'Assign';
-    const all = [...(a.users ?? []).map((u: any) => u.name.split(' ')[0]), ...(a.teams ?? []).map((t: any) => t.name)];
-    if (all.length === 0) return 'Assign';
-    if (all.length === 1) return all[0];
-    if (all.length === 2) return all.join(', ');
-    return `${all[0]}, +${all.length - 1} more`;
-  }
-
-  get hasAssignees(): boolean {
-    const a = this.todo.assignees as Assignees | undefined;
-    return !!a && ((a.users?.length ?? 0) + (a.teams?.length ?? 0)) > 0;
-  }
-
   get recurrenceLabel(): string {
     const r = this.todo.recurrence_rule;
     if (!r) return 'Recurring';
@@ -1605,108 +1381,24 @@ export class TodoDialogComponent implements OnInit {
     if (!this.isCreate) {
       this.descDraft = this.todo.description ?? '';
       this.api.get<any[]>(`/comments/todo/${this.todo.id}`).subscribe((c) => this.comments.set(c));
-      this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((r) => this.reminders.set(r));
       this.api.get<any>(`/todos/${this.todo.id}`).subscribe((t) => this.todoAttachments.set(t.attachments ?? []));
       if (this.todo.project_id) {
         this.api.get<any[]>(`/projects/${this.todo.project_id}/users`).subscribe((u) => this.accessibleUsers.set(u));
       }
-      const dd = this.todo.due_date
-        ? new Date(this.todo.due_date * 1000).toLocaleDateString('en-CA')
-        : '';
-      const rr = !!this.todo.is_recurring;
-      const ri = this.todo.recurrence_rule?.interval ?? 1;
-      const rt = this.todo.recurrence_rule?.type ?? 'weekly';
-      this.schedDueDate.set(dd);
-      this.schedRecurring.set(rr);
-      this.schedInterval.set(ri);
-      this.schedType.set(rt);
-      this.savedSchedule.set({ dueDate: dd, recurring: rr, interval: ri, type: rt });
     }
-  }
-
-  // ── Reminders ─────────────────────────────────────────
-
-  addReminderIn(amount: number, unit: 'day' | 'week'): void {
-    const ms = unit === 'day' ? amount * 86400000 : amount * 7 * 86400000;
-    const remindAt = Math.floor((Date.now() + ms) / 1000);
-    const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
-    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
-    this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label, notifyEmail })
-      .subscribe((r) => {
-        this.reminders.update((list) => [...list, r]);
-        this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
-      });
-  }
-
-  addCustomReminder(): void {
-    if (!this.customReminderDate) return;
-    const remindAt = Math.floor(new Date(this.customReminderDate).getTime() / 1000);
-    if (remindAt <= Math.floor(Date.now() / 1000)) return;
-    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
-    this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, notifyEmail })
-      .subscribe((r) => {
-        this.reminders.update((list) => [...list, r]);
-        this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
-        this.customReminderDate = '';
-      });
-  }
-
-  /** Convert unix seconds → "YYYY-MM-DDTHH:MM" for datetime-local input value. */
-  reminderToDatetimeLocal(remindAt: number): string {
-    const d = new Date(remindAt * 1000);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  saveReminderTime(r: any, event: Event): void {
-    const val = (event.target as HTMLInputElement).value;
-    if (!val) { this.editingReminderId.set(null); return; }
-    const remindAt = Math.floor(new Date(val).getTime() / 1000);
-    this.editingReminderId.set(null);
-    this.api.patch(`/notifications/reminders/item/${r.id}`, { remindAt })
-      .subscribe((updated: any) => {
-        this.reminders.update((list) =>
-          list.map((x) => x.id === r.id ? { ...x, remind_at: updated.remind_at, sent: 0 } : x),
-        );
-      });
-  }
-
-  toggleReminderEmail(r: any): void {
-    const newVal = !r.notify_email;
-    this.api.patch(`/notifications/reminders/item/${r.id}`, { notifyEmail: newVal })
-      .subscribe(() => {
-        this.reminders.update((list) =>
-          list.map((x) => x.id === r.id ? { ...x, notify_email: newVal } : x),
-        );
-      });
-  }
-
-  deleteReminder(id: string): void {
-    this.api.delete(`/notifications/reminders/item/${id}`).subscribe(() => {
-      this.reminders.update((list) => list.filter((r) => r.id !== id));
-      this.todo.reminder_count = Math.max(0, (this.todo.reminder_count ?? 1) - 1);
-    });
-  }
-
-  formatReminder(r: any): string {
-    const d = new Date(r.remind_at * 1000);
-    const label = r.label ? `${r.label} — ` : '';
-    return label + d.toLocaleString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit',
-    });
   }
 
   createCustomReminderDate = '';
   private createReminderAutoFillId: string | null = null;
 
+  private flashReminder(id: string): void {
+    this.animatingReminderIds.update((s) => new Set([...s, id]));
+    setTimeout(() => this.animatingReminderIds.update((s) => { const n = new Set(s); n.delete(id); return n; }), 1000);
+  }
+
   onDueDateChange(val: string): void {
-    if (this.isCreate) {
-      this.form.dueDateStr = val;
-      this.onCreateDueDateChange(val);
-    } else {
-      this.onSchedDueDateChange(val);
-    }
+    this.form.dueDateStr = val;
+    this.onCreateDueDateChange(val);
   }
 
   onCreateDueDateChange(dateStr: string): void {
@@ -1791,96 +1483,6 @@ export class TodoDialogComponent implements OnInit {
     this.descDraft = this.todo.description ?? '';
   }
 
-  // ── Schedule editing ──────────────────────────────────
-
-  onSchedDueDateChange(val: string): void {
-    this.schedDueDate.set(val);
-    const hasRealDueReminder = this.reminders().some((r) => r.label === 'Due date' && !r.sent);
-    if (val && !hasRealDueReminder) {
-      const existing = this.pendingDueDateReminder();
-      if (!existing || !existing.userEdited) {
-        this.userPrefs.load();
-        const remindAt = this.userPrefs.calcDueReminderDatetime(val);
-        const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
-        const isNew = !existing;
-        this.pendingDueDateReminder.set({ remindAt, notifyEmail, userEdited: false });
-        if (isNew) setTimeout(() => this.flashReminder('pending-due'), 30);
-      }
-    } else if (!val) {
-      this.pendingDueDateReminder.set(null);
-    }
-  }
-
-  onPendingReminderTimeChange(event: Event): void {
-    const val = (event.target as HTMLInputElement).value;
-    if (val) this.pendingDueDateReminder.update((p) => p ? { ...p, remindAt: val, userEdited: true } : null);
-    this.editingReminderId.set(null);
-  }
-
-  togglePendingEmail(): void {
-    this.pendingDueDateReminder.update((p) => p ? { ...p, notifyEmail: !p.notifyEmail } : null);
-  }
-
-  private flashReminder(id: string): void {
-    this.animatingReminderIds.update((s) => new Set([...s, id]));
-    setTimeout(() => this.animatingReminderIds.update((s) => { const n = new Set(s); n.delete(id); return n; }), 1000);
-  }
-
-  saveSchedule(): void {
-    const dueDate = this.schedDueDate()
-      ? Math.floor(new Date(this.schedDueDate() + 'T00:00:00').getTime() / 1000)
-      : null;
-    const recurrenceRule = this.schedRecurring()
-      ? { interval: this.schedInterval(), type: this.schedType() }
-      : null;
-    this.api.patch<any>(`/todos/${this.todo.id}`, {
-      dueDate,
-      isRecurring: this.schedRecurring(),
-      recurrenceRule,
-    }).subscribe((updated) => {
-      this.todo = { ...this.todo, ...updated };
-      this.savedSchedule.set({
-        dueDate: this.schedDueDate(),
-        recurring: this.schedRecurring(),
-        interval: this.schedInterval(),
-        type: this.schedType(),
-      });
-      this.schedSaved.set(true);
-      this.cdr.detectChanges();
-      setTimeout(() => this.schedSaved.set(false), 2000);
-
-      const pending = this.pendingDueDateReminder();
-      if (dueDate && pending) {
-        const remindAt = Math.floor(new Date(pending.remindAt).getTime() / 1000);
-        this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date', notifyEmail: pending.notifyEmail })
-          .subscribe((r) => {
-            this.reminders.update((list) => [...list, r]);
-            this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
-            this.pendingDueDateReminder.set(null);
-            this.flashReminder(r.id);
-          });
-      } else if (!dueDate) {
-        const autoDue = this.reminders().find((r) => r.label === 'Due date' && !r.sent);
-        if (autoDue) {
-          this.api.delete(`/notifications/reminders/item/${autoDue.id}`).subscribe(() => {
-            this.reminders.update((list) => list.filter((r) => r.id !== autoDue.id));
-            this.todo.reminder_count = Math.max(0, (this.todo.reminder_count ?? 1) - 1);
-          });
-        }
-        this.pendingDueDateReminder.set(null);
-      }
-    });
-  }
-
-  resetSchedule(): void {
-    const s = this.savedSchedule();
-    this.schedDueDate.set(s.dueDate);
-    this.schedRecurring.set(s.recurring);
-    this.schedInterval.set(s.interval);
-    this.schedType.set(s.type);
-    this.pendingDueDateReminder.set(null);
-  }
-
   // ── Step control ──────────────────────────────────────
   setStep(index: number): void {
     this.todo = { ...this.todo, flow_step_index: index };
@@ -1918,13 +1520,13 @@ subNextStepLabel(sub: any): string {
     });
   }
 
-  // ── Priority ──────────────────────────────────────────
-  setPriority(priority: number): void {
-    this.todo = { ...this.todo, priority };
-    this.priorityOpen.set(false);
-    this.api.patch<any>(`/todos/${this.todo.id}`, { priority }).subscribe((updated) => {
-      this.todo = { ...this.todo, ...updated };
-    });
+  // ── Component update handlers ─────────────────────────
+  onTodoUpdated(updated: any): void {
+    this.todo = { ...this.todo, ...updated };
+  }
+
+  onTodoChanged(partial: Partial<any>): void {
+    this.todo = { ...this.todo, ...partial };
   }
 
   // ── Change creator ────────────────────────────────────
@@ -1933,20 +1535,6 @@ subNextStepLabel(sub: any): string {
     if (user.id === this.todo.created_by) return;
     this.api.patch<any>(`/todos/${this.todo.id}`, { createdBy: user.id }).subscribe((updated) => {
       this.todo = { ...this.todo, ...updated };
-    });
-  }
-
-  // ── Assign dialog ─────────────────────────────────────
-  openAssign(): void {
-    const ref = this.dialog.open(AssignDialogComponent, {
-      width: '580px', maxHeight: '70vh', hasBackdrop: true,
-      backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { todoId: this.todo.id, assignees: this.todo.assignees ?? { users: [], teams: [] }, projectId: this.todo.project_id ?? null },
-    });
-    ref.closed.subscribe((result: any) => {
-      if (result !== undefined) {
-        this.todo = { ...this.todo, assignees: result };
-      }
     });
   }
 
