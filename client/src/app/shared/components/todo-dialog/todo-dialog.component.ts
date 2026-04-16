@@ -1625,6 +1625,15 @@ export class TodoDialogComponent implements OnInit {
       this.schedSaved.set(true);
       this.cdr.detectChanges();
       setTimeout(() => this.schedSaved.set(false), 2000);
+
+      if (dueDate && !this.reminders().some((r) => r.label === 'Due date' && !r.sent)) {
+        const remindAt = Math.floor(new Date(this.schedDueDate() + 'T09:00:00').getTime() / 1000);
+        this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date' })
+          .subscribe((r) => {
+            this.reminders.update((list) => [...list, r]);
+            this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
+          });
+      }
     });
   }
 
