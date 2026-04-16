@@ -23,8 +23,6 @@ const EVENT_ROWS: SettingRow[] = [
   { key: 'on_task_updated',  label: 'Task updated',           description: "When a task's title, description, or due date changes",    icon: 'edit',                type: 'toggle' },
   { key: 'on_task_assigned', label: 'Task assigned',          description: 'When a task is assigned or unassigned to you or your department. Email for this always follows your global email setting, not per-inbox overrides.', icon: 'person_add', type: 'toggle' },
   { key: 'on_task_comment',  label: 'Comments',               description: 'When someone leaves a comment on a task',                  icon: 'chat_bubble_outline', type: 'toggle' },
-  { key: 'on_upcoming',     label: 'Upcoming task reminders', description: "Get notified before a task's due date",                   icon: 'schedule',           type: 'toggle' },
-  { key: 'on_past_due',     label: 'Past due reminders',     description: 'Get reminded daily about overdue tasks',                   icon: 'warning_amber',      type: 'toggle' },
 ];
 
 @Component({
@@ -65,25 +63,13 @@ const EVENT_ROWS: SettingRow[] = [
               <div id="tour-timezone" class="general-row">
                 <div class="general-info">
                   <div class="general-label">Timezone</div>
-                  <div class="general-desc">Used for daily reminder resets (upcoming, past-due). Defaults to the server's configured timezone.</div>
+                  <div class="general-desc">Used for date display and reminder scheduling. Defaults to the server's configured timezone.</div>
                 </div>
                 <select class="tz-select" (change)="saveTimezone($any($event.target).value)">
                   @for (tz of timezones; track tz) {
                     <option [value]="tz" [selected]="tz === timezone">{{ tz }}</option>
                   }
                 </select>
-              </div>
-              <div id="tour-reminder" class="general-row">
-                <div class="general-info">
-                  <div class="general-label">Daily overdue reminder time</div>
-                  <div class="general-desc">Time of day to receive the consolidated overdue tasks digest (email + in-app).</div>
-                </div>
-                <input
-                  type="time"
-                  class="time-input"
-                  [value]="overdueReminderTime"
-                  (change)="saveOverdueReminderTime($any($event.target).value)"
-                />
               </div>
             </div>
 
@@ -167,15 +153,6 @@ const EVENT_ROWS: SettingRow[] = [
                     <div class="event-info">
                       <div class="event-label">{{ row.label }}</div>
                       <div class="event-desc">{{ row.description }}</div>
-                      @if (row.key === 'on_upcoming' && globalSettings().on_upcoming) {
-                        <div class="event-extra">
-                          Notify
-                          <input type="number" class="hours-input" min="1" max="168"
-                            [ngModel]="globalSettings().upcoming_hours"
-                            (ngModelChange)="saveGlobal('upcoming_hours', +$event)" />
-                          hours before due
-                        </div>
-                      }
                     </div>
                     <label class="toggle">
                       <input type="checkbox"
@@ -320,13 +297,6 @@ const EVENT_ROWS: SettingRow[] = [
       background: var(--surface-bg); color: var(--text-primary);
       font-family: inherit; font-size: 13px; cursor: pointer;
     }
-    .time-input {
-      flex-shrink: 0; width: 110px;
-      padding: 6px 10px; border-radius: 6px;
-      border: 1px solid var(--surface-border);
-      background: var(--surface-bg); color: var(--text-primary);
-      font-family: inherit; font-size: 13px; cursor: pointer;
-    }
 
     /* Channels */
     .channel-rows { }
@@ -353,17 +323,6 @@ const EVENT_ROWS: SettingRow[] = [
     .event-info { flex: 1; min-width: 0; }
     .event-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
     .event-desc  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
-    .event-extra {
-      display: flex; align-items: center; gap: 5px;
-      font-size: 12px; color: var(--text-secondary); margin-top: 5px;
-    }
-    .hours-input {
-      width: 52px; padding: 3px 6px;
-      border: 1px solid var(--surface-border); border-radius: 5px;
-      font-size: 12px; font-family: inherit;
-      background: var(--surface-bg); color: var(--text-primary);
-      text-align: center;
-    }
 
     /* Toggle switch */
     .toggle {
@@ -463,9 +422,8 @@ export class SettingsPageComponent implements OnInit {
   eventRows     = EVENT_ROWS;
   inboxes       = this.inboxStore.inboxes;
   userEmail     = computed(() => this.auth.user()?.email ?? '');
-  timezone             = 'UTC';
-  timezones            = TIMEZONES;
-  overdueReminderTime  = '08:00';
+  timezone  = 'UTC';
+  timezones = TIMEZONES;
 
   globalSettings = computed(() =>
     this.notifSvc.getEffectiveSettings(null),
@@ -475,18 +433,12 @@ export class SettingsPageComponent implements OnInit {
     this.notifSvc.loadSettings();
     this.api.get<any>('/users/me').subscribe((u) => {
       if (u?.timezone) this.timezone = u.timezone;
-      if (u?.overdue_reminder_time) this.overdueReminderTime = u.overdue_reminder_time;
     });
   }
 
   saveTimezone(tz: string): void {
     this.timezone = tz;
     this.api.patch('/users/me/timezone', { timezone: tz }).subscribe();
-  }
-
-  saveOverdueReminderTime(time: string): void {
-    this.overdueReminderTime = time;
-    this.api.patch('/users/me/overdue-reminder-time', { time }).subscribe();
   }
 
   saveGlobal(key: keyof NotificationSettings | string, value: any): void {

@@ -209,6 +209,11 @@ export class TodosService {
     const created = this.findById(id, userId, userRole);
     this.eventEmitter.emit('todo.created', new TodoCreatedEvent(created, userId));
     this.recordHistory(id, userId, 'created', null, dto.title);
+
+    if (dto.dueDate) {
+      this.upsertAutoDueReminder(id, userId, dto.dueDate);
+    }
+
     return created;
   }
 
@@ -275,6 +280,14 @@ export class TodosService {
     if (hasProjectId && dto.projectId && dto.projectId !== todo.project_id) {
       this.db.prepare('UPDATE todos SET project_id = ?, updated_at = unixepoch() WHERE parent_todo_id = ?')
         .run(dto.projectId, id);
+    }
+
+    if (dto.dueDate !== undefined) {
+      if (dto.dueDate) {
+        this.upsertAutoDueReminder(id, todo.created_by ?? userId, dto.dueDate);
+      } else {
+        this.db.prepare("DELETE FROM todo_reminders WHERE todo_id = ? AND label = '__auto_due__'").run(id);
+      }
     }
 
     const updated = this.findById(id, userId, userRole);
@@ -557,6 +570,7 @@ export class TodosService {
     const next = TodosService.nextRecurrenceDate(base, rule);
 
     const id = uuidv4();
+    const nextDueSec = Math.floor(next.getTime() / 1000);
     this.db.prepare(`
       INSERT INTO todos (
         id, project_id, parent_todo_id, title, description,
@@ -565,11 +579,28 @@ export class TodosService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, todo.project_id, todo.parent_todo_id, todo.title, todo.description,
-      Math.floor(next.getTime() / 1000),
+      nextDueSec,
       1, todo.recurrence_rule, todo.id,
       todo.sort_order, todo.is_inbox, todo.inbox_user_id, userId,
     );
+    this.upsertAutoDueReminder(id, userId, nextDueSec);
     return id;
+  }
+
+  private upsertAutoDueReminder(todoId: string, userId: string, remindAt: number): void {
+    const existing = this.db.prepare(
+      "SELECT id FROM todo_reminders WHERE todo_id = ? AND label = '__auto_due__'",
+    ).get(todoId) as any;
+    if (existing) {
+      this.db.prepare(
+        'UPDATE todo_reminders SET remind_at = ?, sent = 0 WHERE id = ?',
+      ).run(remindAt, existing.id);
+    } else {
+      this.db.prepare(`
+        INSERT INTO todo_reminders (id, todo_id, user_id, remind_at, label, sent, created_at)
+        VALUES (?, ?, ?, ?, '__auto_due__', 0, unixepoch())
+      `).run(uuidv4(), todoId, userId, remindAt);
+    }
   }
 
   reorder(updates: { id: string; sortOrder: number }[]) {

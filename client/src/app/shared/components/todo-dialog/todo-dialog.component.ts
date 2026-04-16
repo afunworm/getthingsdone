@@ -248,11 +248,6 @@ const DEFAULT_STEPS: StepDef[] = [
               </p>
             }
           </div>
-          <div class="field">
-            <label class="field-label">Reminder</label>
-            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />
-          </div>
-
           <!-- Assignees (create mode — projects only) -->
           @if (!data.isInbox) {
           <div class="field">
@@ -1415,7 +1410,6 @@ export class TodoDialogComponent implements OnInit {
     description: '',
     dueDateStr: '',
     priority: 0,
-    reminderDate: '',
     isRecurring: false,
     recurrenceInterval: 1,
     recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -1560,7 +1554,8 @@ export class TodoDialogComponent implements OnInit {
 
   formatReminder(r: any): string {
     const d = new Date(r.remind_at * 1000);
-    const label = r.label ? `${r.label} — ` : '';
+    const rawLabel = r.label === '__auto_due__' ? 'Due date' : r.label;
+    const label = rawLabel ? `${rawLabel} — ` : '';
     return label + d.toLocaleString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
       hour: 'numeric', minute: '2-digit',
@@ -1929,11 +1924,6 @@ subNextStepLabel(sub: any): string {
           this.api.post<any>('/todos', { title, projectId: this.data.projectId, parentTodoId: todo.id }),
         ),
       ];
-      if (this.form.reminderDate) {
-        const remindAt = Math.floor(new Date(this.form.reminderDate).getTime() / 1000);
-        followUp.push(this.api.post<any>(`/notifications/reminders/${todo.id}`, { remindAt }));
-        todo.reminder_count = (todo.reminder_count ?? 0) + 1;
-      }
       if (followUp.length === 0) {
         this.dialogRef.close(todo);
         return;
