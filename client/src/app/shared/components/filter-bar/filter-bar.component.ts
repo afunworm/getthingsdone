@@ -80,13 +80,18 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
           @if (upcomingOpen()) {
             <div class="sort-backdrop" (click)="upcomingOpen.set(false)"></div>
           }
-          <button class="chip upcoming-chip" [class.active]="!!state().comingUp"
-            (click)="upcomingOpen.set(!upcomingOpen())"
-            title="Filter by upcoming due date">
-            <span class="material-icons" style="font-size:12px">event_available</span>
-            {{ state().comingUp ? upcomingLabel(state().comingUp) : 'this week' }}
-            <span class="material-icons" style="font-size:14px;margin-left:1px">arrow_drop_down</span>
-          </button>
+          <div class="upcoming-compound" [class.active]="!!state().comingUp">
+            <span class="upcoming-static-label">
+              <span class="material-icons" style="font-size:12px">event_available</span>
+              Upcoming
+            </span>
+            <button class="upcoming-period-btn"
+              (click)="upcomingOpen.set(!upcomingOpen())"
+              title="Filter by upcoming due date">
+              {{ state().comingUp ? upcomingLabel(state().comingUp) : 'this week' }}
+              <span class="material-icons" style="font-size:14px">arrow_drop_down</span>
+            </button>
+          </div>
           @if (upcomingOpen()) {
             <div class="upcoming-menu">
               @for (opt of UPCOMING_OPTIONS; track opt.value) {
@@ -194,7 +199,30 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
 
     /* Upcoming dropdown */
     .upcoming-wrap { position: relative; }
-    .upcoming-chip { gap: 2px; padding-right: 4px; }
+    .upcoming-compound {
+      display: inline-flex; align-items: stretch;
+      border: 1px solid var(--surface-border); border-radius: 20px;
+      overflow: hidden; transition: border-color 120ms;
+      &.active { border-color: var(--accent-color); }
+    }
+    .upcoming-static-label {
+      display: flex; align-items: center; gap: 3px;
+      padding: 3px 8px 3px 10px;
+      font-size: 11px; font-weight: 500; color: var(--text-secondary);
+      border-right: 1px solid var(--surface-border);
+      white-space: nowrap; user-select: none;
+      .active & { color: var(--accent-color); border-right-color: color-mix(in srgb, var(--accent-color) 35%, transparent); }
+    }
+    .upcoming-period-btn {
+      display: inline-flex; align-items: center; gap: 1px;
+      padding: 3px 4px 3px 8px;
+      border: 0; background: transparent; cursor: pointer;
+      font-family: inherit; font-size: 11px; font-weight: 500;
+      color: var(--text-secondary); transition: background 120ms, color 120ms;
+      white-space: nowrap;
+      &:hover { background: var(--surface-hover); color: var(--text-primary); }
+      .active & { color: var(--accent-color); font-weight: 600; }
+    }
     .upcoming-menu {
       position: absolute; top: calc(100% + 4px); left: 0;
       background: var(--surface-card); border: 1px solid var(--surface-border);
