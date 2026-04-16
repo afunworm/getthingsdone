@@ -273,7 +273,7 @@ const DEFAULT_STEPS: StepDef[] = [
               }
             </div>
             @for (r of form.pendingReminders; track r.id) {
-              <div class="reminder-row">
+              <div class="reminder-row" [class.reminder-new]="animatingReminderIds().has(r.id)">
                 <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
                 @if (editingReminderId() === r.id) {
                   <input type="datetime-local" class="reminder-date-input reminder-edit-input"
@@ -411,9 +411,9 @@ const DEFAULT_STEPS: StepDef[] = [
                 <div class="sch-row">
                   <span class="material-icons sch-icon">event</span>
                   <input type="date" class="sch-date-input"
-                    [ngModel]="schedDueDate()" (ngModelChange)="schedDueDate.set($event)" />
+                    [ngModel]="schedDueDate()" (ngModelChange)="onSchedDueDateChange($event)" />
                   @if (schedDueDate()) {
-                    <button class="sch-clear" (click)="schedDueDate.set('')" title="Clear due date">
+                    <button class="sch-clear" (click)="onSchedDueDateChange('')" title="Clear due date">
                       <span class="material-icons" style="font-size:12px">close</span>
                     </button>
                   }
@@ -476,7 +476,35 @@ const DEFAULT_STEPS: StepDef[] = [
               <span class="section-label">Reminders</span>
               <span class="section-count">{{ reminders().length }}</span>
             </div>
-            @if (reminders().length) {
+            @if (pendingDueDateReminder(); as pending) {
+              <div class="reminder-row reminder-pending"
+                [class.reminder-new]="animatingReminderIds().has('pending-due')">
+                <span class="material-icons" style="font-size:14px;color:var(--accent-color)">alarm_add</span>
+                @if (editingReminderId() === 'pending-due') {
+                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
+                    [value]="pending.remindAt"
+                    (change)="onPendingReminderTimeChange($event)"
+                    (blur)="editingReminderId.set(null)"
+                    (keydown.escape)="editingReminderId.set(null)" />
+                } @else {
+                  <span class="reminder-time reminder-time-editable"
+                    (click)="editingReminderId.set('pending-due')" title="Click to change time">
+                    Due date — {{ formatCreateReminder(pending.remindAt) }}
+                  </span>
+                }
+                <span class="reminder-pending-badge">pending save</span>
+                <button class="btn-icon reminder-email-toggle" [class.active]="pending.notifyEmail"
+                  (click)="togglePendingEmail()"
+                  [title]="pending.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
+                  <span class="material-icons" style="font-size:13px">email</span>
+                  <span class="reminder-email-label">Email</span>
+                </button>
+                <button class="btn-icon reminder-del" (click)="pendingDueDateReminder.set(null)" title="Remove reminder">
+                  <span class="material-icons" style="font-size:13px">close</span>
+                </button>
+              </div>
+            }
+            @if (reminders().length || pendingDueDateReminder()) {
               <p class="reminder-edit-hint">Click a reminder time to change it.</p>
             }
             <!-- Quick add buttons -->
@@ -492,7 +520,8 @@ const DEFAULT_STEPS: StepDef[] = [
             </div>
             <!-- Existing reminders -->
             @for (r of reminders(); track r.id) {
-              <div class="reminder-row" [class.reminder-sent]="r.sent">
+              <div class="reminder-row" [class.reminder-sent]="r.sent"
+                [class.reminder-new]="animatingReminderIds().has(r.id)">
                 <span class="material-icons" style="font-size:14px;color:var(--text-muted)">
                   {{ r.sent ? 'check_circle' : 'alarm' }}
                 </span>
@@ -1176,6 +1205,22 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
     .reminder-edit-hint { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; font-style: italic; }
+    .reminder-pending {
+      border: 1px dashed color-mix(in srgb, var(--accent-color) 50%, transparent);
+      border-radius: 6px; padding: 5px 8px; margin-bottom: 4px;
+      background: color-mix(in srgb, var(--accent-color) 5%, transparent);
+    }
+    .reminder-pending-badge {
+      font-size: 10px; font-weight: 600; white-space: nowrap;
+      padding: 1px 6px; border-radius: 8px;
+      background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+      color: var(--accent-color);
+    }
+    @keyframes reminder-flash {
+      0%   { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
+      100% { background: transparent; }
+    }
+    .reminder-new { animation: reminder-flash 1s ease-out forwards; border-radius: 5px; }
     .hist-section { border-top: 1px solid var(--surface-border); padding: 10px 14px; }
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
@@ -1422,6 +1467,11 @@ export class TodoDialogComponent implements OnInit {
   schedInterval  = signal(1);
   schedType      = signal<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
   schedSaved     = signal(false);
+
+  // Pending due-date reminder: preview shown while schedule edit is unsaved
+  pendingDueDateReminder = signal<{ remindAt: string; notifyEmail: boolean; userEdited: boolean } | null>(null);
+  // IDs of reminder rows currently running the flash-in animation
+  animatingReminderIds = signal<Set<string>>(new Set());
 
   // Saved baseline as a signal so schedDirty computed re-runs when it changes
   private savedSchedule = signal({ dueDate: '', recurring: false, interval: 1, type: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly' });
@@ -1701,6 +1751,7 @@ export class TodoDialogComponent implements OnInit {
         { id, remindAt, label: 'Due date', notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email },
       ];
       this.createReminderAutoFillId = id;
+      setTimeout(() => this.flashReminder(id), 30);
     } else if (!dateStr && this.createReminderAutoFillId) {
       this.form.pendingReminders = this.form.pendingReminders.filter(
         (r) => r.id !== this.createReminderAutoFillId,
@@ -1775,6 +1826,40 @@ export class TodoDialogComponent implements OnInit {
   }
 
   // ── Schedule editing ──────────────────────────────────
+
+  onSchedDueDateChange(val: string): void {
+    this.schedDueDate.set(val);
+    const hasRealDueReminder = this.reminders().some((r) => r.label === 'Due date' && !r.sent);
+    if (val && !hasRealDueReminder) {
+      const existing = this.pendingDueDateReminder();
+      if (!existing || !existing.userEdited) {
+        this.userPrefs.load();
+        const remindAt = this.userPrefs.calcDueReminderDatetime(val);
+        const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+        const isNew = !existing;
+        this.pendingDueDateReminder.set({ remindAt, notifyEmail, userEdited: false });
+        if (isNew) setTimeout(() => this.flashReminder('pending-due'), 30);
+      }
+    } else if (!val) {
+      this.pendingDueDateReminder.set(null);
+    }
+  }
+
+  onPendingReminderTimeChange(event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    if (val) this.pendingDueDateReminder.update((p) => p ? { ...p, remindAt: val, userEdited: true } : null);
+    this.editingReminderId.set(null);
+  }
+
+  togglePendingEmail(): void {
+    this.pendingDueDateReminder.update((p) => p ? { ...p, notifyEmail: !p.notifyEmail } : null);
+  }
+
+  private flashReminder(id: string): void {
+    this.animatingReminderIds.update((s) => new Set([...s, id]));
+    setTimeout(() => this.animatingReminderIds.update((s) => { const n = new Set(s); n.delete(id); return n; }), 1000);
+  }
+
   saveSchedule(): void {
     const dueDate = this.schedDueDate()
       ? Math.floor(new Date(this.schedDueDate() + 'T00:00:00').getTime() / 1000)
@@ -1798,16 +1883,15 @@ export class TodoDialogComponent implements OnInit {
       this.cdr.detectChanges();
       setTimeout(() => this.schedSaved.set(false), 2000);
 
-      if (dueDate && !this.reminders().some((r) => r.label === 'Due date' && !r.sent)) {
-        this.userPrefs.load();
-        const remindAt = Math.floor(
-          new Date(this.userPrefs.calcDueReminderDatetime(this.schedDueDate())).getTime() / 1000,
-        );
-        const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
-        this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date', notifyEmail })
+      const pending = this.pendingDueDateReminder();
+      if (dueDate && pending) {
+        const remindAt = Math.floor(new Date(pending.remindAt).getTime() / 1000);
+        this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date', notifyEmail: pending.notifyEmail })
           .subscribe((r) => {
             this.reminders.update((list) => [...list, r]);
             this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
+            this.pendingDueDateReminder.set(null);
+            this.flashReminder(r.id);
           });
       } else if (!dueDate) {
         const autoDue = this.reminders().find((r) => r.label === 'Due date' && !r.sent);
@@ -1817,6 +1901,7 @@ export class TodoDialogComponent implements OnInit {
             this.todo.reminder_count = Math.max(0, (this.todo.reminder_count ?? 1) - 1);
           });
         }
+        this.pendingDueDateReminder.set(null);
       }
     });
   }
@@ -1827,6 +1912,7 @@ export class TodoDialogComponent implements OnInit {
     this.schedRecurring.set(s.recurring);
     this.schedInterval.set(s.interval);
     this.schedType.set(s.type);
+    this.pendingDueDateReminder.set(null);
   }
 
   // ── Step control ──────────────────────────────────────
