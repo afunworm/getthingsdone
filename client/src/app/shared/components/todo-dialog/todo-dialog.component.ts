@@ -273,8 +273,8 @@ const DEFAULT_STEPS: StepDef[] = [
               }
             </div>
             @for (r of form.pendingReminders; track r.id) {
-              <div class="reminder-row" [class.reminder-new]="animatingReminderIds().has(r.id)">
-                <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
+              <div class="reminder-row reminder-pending" [class.reminder-new]="animatingReminderIds().has(r.id)">
+                <span class="material-icons" style="font-size:14px;color:#f57c00">alarm_add</span>
                 @if (editingReminderId() === r.id) {
                   <input type="datetime-local" class="reminder-date-input reminder-edit-input"
                     [value]="r.remindAt"
@@ -287,6 +287,7 @@ const DEFAULT_STEPS: StepDef[] = [
                     {{ formatCreateReminder(r.remindAt) }}
                   </span>
                 }
+                <span class="reminder-pending-badge">pending save</span>
                 <button class="btn-icon reminder-email-toggle" [class.active]="r.notifyEmail"
                   (click)="r.notifyEmail = !r.notifyEmail"
                   [title]="r.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
@@ -479,7 +480,7 @@ const DEFAULT_STEPS: StepDef[] = [
             @if (pendingDueDateReminder(); as pending) {
               <div class="reminder-row reminder-pending"
                 [class.reminder-new]="animatingReminderIds().has('pending-due')">
-                <span class="material-icons" style="font-size:14px;color:var(--accent-color)">alarm_add</span>
+                <span class="material-icons" style="font-size:14px;color:#f57c00">alarm_add</span>
                 @if (editingReminderId() === 'pending-due') {
                   <input type="datetime-local" class="reminder-date-input reminder-edit-input"
                     [value]="pending.remindAt"
@@ -1206,21 +1207,26 @@ const DEFAULT_STEPS: StepDef[] = [
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
     .reminder-edit-hint { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; font-style: italic; }
     .reminder-pending {
-      border: 1px dashed color-mix(in srgb, var(--accent-color) 50%, transparent);
+      border: 1px dashed color-mix(in srgb, #f57c00 50%, transparent);
       border-radius: 6px; padding: 5px 8px; margin-bottom: 4px;
-      background: color-mix(in srgb, var(--accent-color) 5%, transparent);
+      background: color-mix(in srgb, #f57c00 6%, transparent);
     }
     .reminder-pending-badge {
       font-size: 10px; font-weight: 600; white-space: nowrap;
       padding: 1px 6px; border-radius: 8px;
-      background: color-mix(in srgb, var(--accent-color) 12%, transparent);
-      color: var(--accent-color);
+      background: color-mix(in srgb, #f57c00 15%, transparent);
+      color: #e65100;
     }
     @keyframes reminder-flash {
-      0%   { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
+      0%   { background: color-mix(in srgb, #f57c00 35%, transparent); }
+      100% { background: color-mix(in srgb, #f57c00 6%, transparent); }
+    }
+    @keyframes reminder-flash-real {
+      0%   { background: color-mix(in srgb, #f57c00 30%, transparent); }
       100% { background: transparent; }
     }
-    .reminder-new { animation: reminder-flash 1s ease-out forwards; border-radius: 5px; }
+    .reminder-pending.reminder-new { animation: reminder-flash 0.9s ease-out forwards; border-radius: 6px; }
+    .reminder-row:not(.reminder-pending).reminder-new { animation: reminder-flash-real 1s ease-out forwards; border-radius: 5px; }
     .hist-section { border-top: 1px solid var(--surface-border); padding: 10px 14px; }
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
