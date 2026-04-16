@@ -76,17 +76,28 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
         </button>
       }
       @if (!hideFilters.includes('comingUp')) {
-        <div class="upcoming-group" [class.upcoming-active]="!!state().comingUp">
-          <span class="upcoming-label">
+        <div class="upcoming-wrap">
+          @if (upcomingOpen()) {
+            <div class="sort-backdrop" (click)="upcomingOpen.set(false)"></div>
+          }
+          <button class="chip upcoming-chip" [class.active]="!!state().comingUp"
+            (click)="upcomingOpen.set(!upcomingOpen())"
+            title="Filter by upcoming due date">
             <span class="material-icons" style="font-size:12px">event_available</span>
-            Upcoming
-          </span>
-          @for (opt of UPCOMING_OPTIONS; track opt.value) {
-            <button
-              class="upcoming-btn"
-              [class.active]="state().comingUp === opt.value"
-              (click)="setComingUp(opt.value)"
-            >{{ opt.label }}</button>
+            {{ state().comingUp ? upcomingLabel(state().comingUp) : 'this week' }}
+            <span class="material-icons" style="font-size:14px;margin-left:1px">arrow_drop_down</span>
+          </button>
+          @if (upcomingOpen()) {
+            <div class="upcoming-menu">
+              @for (opt of UPCOMING_OPTIONS; track opt.value) {
+                <button class="sort-opt" [class.active]="state().comingUp === opt.value"
+                  (click)="setComingUp(opt.value)">
+                  <span class="material-icons" style="font-size:13px"
+                    [style.opacity]="state().comingUp === opt.value ? 1 : 0">check</span>
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
           }
         </div>
       }
@@ -181,37 +192,15 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
       }
     }
 
-    /* Upcoming segmented button group */
-    .upcoming-group {
-      display: inline-flex; align-items: stretch;
-      border: 1px solid var(--surface-border);
-      border-radius: 20px; overflow: hidden;
-      transition: border-color 120ms;
-      &.upcoming-active { border-color: var(--accent-color); }
+    /* Upcoming dropdown */
+    .upcoming-wrap { position: relative; }
+    .upcoming-chip { gap: 2px; padding-right: 4px; }
+    .upcoming-menu {
+      position: absolute; top: calc(100% + 4px); left: 0;
+      background: var(--surface-card); border: 1px solid var(--surface-border);
+      border-radius: 8px; box-shadow: var(--shadow-md);
+      padding: 4px; min-width: 130px; z-index: 51;
     }
-    .upcoming-label {
-      display: flex; align-items: center; gap: 3px;
-      padding: 3px 8px 3px 10px;
-      font-size: 11px; font-weight: 500;
-      color: var(--text-muted);
-      border-right: 1px solid var(--surface-border);
-      white-space: nowrap; user-select: none;
-    }
-    .upcoming-active .upcoming-label { border-right-color: var(--accent-color); }
-    .upcoming-btn {
-      padding: 3px 8px;
-      border: 0; border-right: 1px solid var(--surface-border);
-      background: transparent; cursor: pointer;
-      font-family: inherit; font-size: 11px; font-weight: 500;
-      color: var(--text-secondary); transition: all 120ms; white-space: nowrap;
-      &:last-child { border-right: 0; }
-      &:hover { background: var(--surface-hover); color: var(--text-primary); }
-      &.active {
-        background: color-mix(in srgb, var(--accent-color) 12%, transparent);
-        color: var(--accent-color); font-weight: 600;
-      }
-    }
-    .upcoming-active .upcoming-btn { border-right-color: color-mix(in srgb, var(--accent-color) 30%, transparent); }
 
     /* Separator between filter chips and saved views */
     .bar-sep {
@@ -319,6 +308,7 @@ export class FilterBarComponent {
   views        = signal<SavedView[]>([]);
   activeViewId = signal<string | null>(null);
   sortOpen     = signal(false);
+  upcomingOpen = signal(false);
   saving       = signal(false);
   viewName     = '';
 
@@ -352,8 +342,13 @@ export class FilterBarComponent {
 
   setComingUp(value: ComingUpWindow): void {
     this.activeViewId.set(null);
+    this.upcomingOpen.set(false);
     this.state.update((s) => ({ ...s, comingUp: s.comingUp === value ? false : value }));
     this.persist();
+  }
+
+  upcomingLabel(value: false | ComingUpWindow): string {
+    return UPCOMING_OPTIONS.find((o) => o.value === value)?.label ?? 'this week';
   }
 
   setSort(value: FilterSortState['sortBy']): void {

@@ -227,6 +227,14 @@ const DEFAULT_STEPS: StepDef[] = [
               A due date is required for recurring tasks.
             </p>
           }
+          @if (createNextOccurrences.length) {
+            <div class="sch-occurrences" style="margin-top:4px;margin-bottom:2px">
+              <span class="sch-occ-label">Next occurrences</span>
+              @for (d of createNextOccurrences; track d) {
+                <span class="sch-occ-date">{{ d }}</span>
+              }
+            </div>
+          }
           <div class="field">
             <label class="field-label">Reminder</label>
             <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />
@@ -1346,6 +1354,37 @@ export class TodoDialogComponent implements OnInit {
     }
     return dates;
   });
+
+  get createNextOccurrences(): string[] {
+    if (!this.form.isRecurring || !this.form.dueDateStr) return [];
+    const interval = this.form.recurrenceInterval || 1;
+    const type = this.form.recurrenceType;
+    const dates: string[] = [];
+    let cur = new Date(this.form.dueDateStr + 'T00:00:00');
+    for (let i = 0; i < 3; i++) {
+      const originalDay = cur.getDate();
+      const next = new Date(cur);
+      if (type === 'daily') {
+        next.setDate(next.getDate() + interval);
+      } else if (type === 'weekly') {
+        next.setDate(next.getDate() + interval * 7);
+      } else if (type === 'yearly') {
+        next.setDate(1);
+        next.setFullYear(next.getFullYear() + interval);
+        next.setMonth(cur.getMonth());
+        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(originalDay, daysInMonth));
+      } else {
+        next.setDate(1);
+        next.setMonth(next.getMonth() + interval);
+        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(originalDay, daysInMonth));
+      }
+      dates.push(next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+      cur = next;
+    }
+    return dates;
+  }
 
   schedDirty = computed(() => {
     const s = this.savedSchedule();
