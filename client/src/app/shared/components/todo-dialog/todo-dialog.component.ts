@@ -259,6 +259,9 @@ const DEFAULT_STEPS: StepDef[] = [
                 <span class="section-count">{{ form.pendingReminders.length }}</span>
               }
             </div>
+            @if (form.pendingReminders.length) {
+              <p class="reminder-edit-hint">Click a reminder time to change it.</p>
+            }
             <div class="reminder-quick">
               <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'day')">In 1 day</button>
               <button class="reminder-quick-btn" (click)="addCreateReminderIn(3, 'day')">In 3 days</button>
@@ -473,6 +476,9 @@ const DEFAULT_STEPS: StepDef[] = [
               <span class="section-label">Reminders</span>
               <span class="section-count">{{ reminders().length }}</span>
             </div>
+            @if (reminders().length) {
+              <p class="reminder-edit-hint">Click a reminder time to change it.</p>
+            }
             <!-- Quick add buttons -->
             <div class="reminder-quick">
               <button class="reminder-quick-btn" (click)="addReminderIn(1, 'day')">In 1 day</button>
@@ -1169,6 +1175,7 @@ const DEFAULT_STEPS: StepDef[] = [
       .reminder-row:hover & { opacity: 1; }
     }
     .no-reminders { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
+    .reminder-edit-hint { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; font-style: italic; }
     .hist-section { border-top: 1px solid var(--surface-border); padding: 10px 14px; }
     .hist-section .section-hdr { cursor: pointer; user-select: none; }
     .hist-chevron { font-size: 16px; color: var(--text-muted); margin-left: auto; transition: transform .15s; }
