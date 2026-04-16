@@ -38,7 +38,8 @@ export class NotificationSchedulerService {
         todoId: r.todo_id,
         projectId: r.project_id ?? undefined,
       }, !r.notify_email);
-      this.db.prepare('UPDATE todo_reminders SET sent = 1 WHERE id = ?').run(r.id);
+      const sentChannels = r.notify_email ? 'app+email' : 'app';
+      this.db.prepare('UPDATE todo_reminders SET sent = 1, sent_channels = ? WHERE id = ?').run(sentChannels, r.id);
       this.log.debug(`Custom reminder sent: ${r.id}`);
     }
   }

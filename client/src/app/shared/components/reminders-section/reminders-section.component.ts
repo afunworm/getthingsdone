@@ -143,7 +143,12 @@ import { NotificationService } from '../../../core/services/notification.service
               </span>
             }
             @if (r.sent) {
-              <span class="reminder-sent-label">sent</span>
+              <span class="reminder-sent-channels">
+                <span class="material-icons rsc-icon" title="In-app notification sent">notifications</span>
+                @if (r.sent_channels === 'app+email') {
+                  <span class="material-icons rsc-icon" title="Email sent">email</span>
+                }
+              </span>
             }
             @if (!r.sent) {
               <button
@@ -306,10 +311,11 @@ import { NotificationService } from '../../../core/services/notification.service
 
     .reminder-edit-input { flex: 1; }
 
-    .reminder-sent-label {
-      font-size: 10px; font-weight: 600; padding: 1px 6px;
-      background: color-mix(in srgb, #43a047 15%, transparent);
-      color: #43a047; border-radius: 8px;
+    .reminder-sent-channels {
+      display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+    }
+    .rsc-icon {
+      font-size: 13px; color: #43a047;
     }
 
     .btn-icon {
