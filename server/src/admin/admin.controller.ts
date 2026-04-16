@@ -104,18 +104,5 @@ export class AdminController {
     return { ok: true };
   }
 
-  // ── Dev helpers ───────────────────────────────────────
 
-  @Post('clear-overdue-notified')
-  clearOverdueNotified() {
-    this.adminService.clearOverdueNotified();
-    return { ok: true };
-  }
-
-  @Post('run-overdue-digest')
-  runOverdueDigest(@CurrentUser() user: any) {
-    this.adminService.clearOverdueNotified();
-    this.notifScheduler.sendOverdueDigestForUser(user.id);
-    return { ok: true };
-  }
 }

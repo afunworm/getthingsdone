@@ -102,12 +102,6 @@ export class AdminService {
     this.db.prepare('DELETE FROM api_tokens WHERE id = ?').run(id);
   }
 
-  clearOverdueNotified() {
-    this.db.prepare(
-      "DELETE FROM user_settings WHERE key = 'overdue_notified_date'",
-    ).run();
-  }
-
   getStats() {
     return {
       users: (this.db.prepare('SELECT COUNT(*) as c FROM users').get() as any).c,
