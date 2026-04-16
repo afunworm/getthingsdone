@@ -4,6 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { Dialog } from '@angular/cdk/dialog';
 import { ApiService } from '../../../core/services/api.service';
 import { DragStateService } from '../../../core/services/drag-state.service';
 import { AppDropEvent, DropZoneDirective, DraggableDirective, DragHandleDirective } from '../../../core/drag-drop';
@@ -11,8 +12,8 @@ import { Assignees } from '../assign-dialog/assign-dialog.component';
 import { PriorityService } from '../../../core/services/priority.service';
 import { PriorityPickerComponent } from '../priority-picker/priority-picker.component';
 import { AssignPickerComponent } from '../assign-picker/assign-picker.component';
-import { DueDateSectionComponent } from '../due-date-section/due-date-section.component';
 import { RemindersSectionComponent } from '../reminders-section/reminders-section.component';
+import { DueDateReminderDialogComponent } from '../due-date-reminder-dialog/due-date-reminder-dialog.component';
 
 export interface FlowStep { label: string; color: string; bg: string; }
 
@@ -35,7 +36,7 @@ export interface SubtaskDroppedEvent {
 @Component({
   selector: 'app-todo-item',
   standalone: true,
-  imports: [CommonModule, FormsModule, DropZoneDirective, DraggableDirective, DragHandleDirective, PriorityPickerComponent, AssignPickerComponent, DueDateSectionComponent, RemindersSectionComponent],
+  imports: [CommonModule, FormsModule, DropZoneDirective, DraggableDirective, DragHandleDirective, PriorityPickerComponent, AssignPickerComponent, RemindersSectionComponent],
   template: `
     <div class="todo-wrap"
       [id]="'tour-task-' + todo.id"
@@ -160,11 +161,15 @@ export interface SubtaskDroppedEvent {
           }
 
           <!-- Due date / schedule -->
-          <app-due-date-section
-            [todo]="todo"
-            [compact]="true"
-            (updated)="assigned.emit($event)"
-          ></app-due-date-section>
+          <button
+            class="btn-action"
+            [id]="'task-sch-btn-' + todo.id"
+            [class.btn-sch-active]="todo.due_date || todo.is_recurring"
+            (click)="openDueDateReminder($event)"
+            title="Due date / recurring"
+          >
+            <span class="material-icons" style="font-size:14px">event</span>
+          </button>
 
           <!-- Priority -->
           <app-priority-picker
@@ -357,6 +362,7 @@ export interface SubtaskDroppedEvent {
       color: var(--text-muted);
       &:hover:not(:disabled) { color: #d32f2f; background: #fde8e8; }
     }
+    .btn-sch-active { color: var(--accent-color); }
 
     /* ── Priority borders & backgrounds ─────────────── */
     @property --ba {
@@ -473,6 +479,7 @@ export interface SubtaskDroppedEvent {
   `],
 })
 export class TodoItemComponent {
+  private dialog    = inject(Dialog);
   private api       = inject(ApiService);
   dragState         = inject(DragStateService);
 
@@ -553,6 +560,21 @@ export class TodoItemComponent {
   undone(todo: any): void {
     this.api.patch<any>(`/todos/${todo.id}/set-step`, { stepIndex: 0 }).subscribe((updated) => {
       this.assigned.emit(updated);
+    });
+  }
+
+  openDueDateReminder(e: MouseEvent): void {
+    e.stopPropagation();
+    const ref = this.dialog.open(DueDateReminderDialogComponent, {
+      width: '360px',
+      maxHeight: '80vh',
+      hasBackdrop: true,
+      backdropClass: 'cdk-overlay-backdrop',
+      panelClass: 'app-dialog-panel',
+      data: { todo: this.todo },
+    });
+    ref.closed.subscribe((updated: any) => {
+      if (updated) this.assigned.emit(updated);
     });
   }
 
