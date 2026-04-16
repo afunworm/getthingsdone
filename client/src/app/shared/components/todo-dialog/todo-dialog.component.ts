@@ -223,7 +223,14 @@ const DEFAULT_STEPS: StepDef[] = [
             }
           </div>
           @if (isCreate) {
-            <textarea class="field-textarea" [(ngModel)]="form.description" rows="3" placeholder="Optional"></textarea>
+            <div class="rte-field rte-desc-field">
+              <app-rich-text-editor
+                [content]="form.description"
+                [users]="accessibleUsers()"
+                placeholder="Optional"
+                (htmlChange)="form.description = $event"
+              ></app-rich-text-editor>
+            </div>
           } @else {
             @if (!editingDesc()) {
               @if (todo.description) {
