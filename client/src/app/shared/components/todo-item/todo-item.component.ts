@@ -10,6 +10,8 @@ import { DragStateService } from '../../../core/services/drag-state.service';
 import { AppDropEvent, DropZoneDirective, DraggableDirective, DragHandleDirective } from '../../../core/drag-drop';
 import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
 import { PriorityService } from '../../../core/services/priority.service';
+import { UserPrefsService } from '../../../core/services/user-prefs.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 export interface FlowStep { label: string; color: string; bg: string; }
 
@@ -722,6 +724,8 @@ export class TodoItemComponent implements OnChanges {
   private dialog    = inject(Dialog);
   private api       = inject(ApiService);
   dragState         = inject(DragStateService);
+  private userPrefs = inject(UserPrefsService);
+  private notifSvc  = inject(NotificationService);
 
   @Input({ required: true }) todo!: any;
   @Input() flowSteps: FlowStep[] = DEFAULT_STEPS;
@@ -854,6 +858,8 @@ export class TodoItemComponent implements OnChanges {
   }
 
   saveSchedule(): void {
+    const prevDueDateStr = this.todo.due_date
+      ? new Date(this.todo.due_date * 1000).toLocaleDateString('en-CA') : '';
     const dueDate = this.schDueDate
       ? Math.floor(new Date(this.schDueDate + 'T00:00:00').getTime() / 1000) : null;
     const recurrenceRule = this.schRecurring
@@ -863,6 +869,23 @@ export class TodoItemComponent implements OnChanges {
     }).subscribe((updated) => {
       this.schedOpen.set(false);
       this.assigned.emit(updated);
+      // Auto-create a reminder when a due date is newly set
+      if (this.schDueDate && this.schDueDate !== prevDueDateStr) {
+        this.api.get<any[]>(`/notifications/reminders/${this.todo.id}`).subscribe((reminders) => {
+          const hasExisting = reminders.some((r) => r.label === 'Due date' && !r.sent);
+          if (!hasExisting) {
+            this.userPrefs.load();
+            const remindAtStr = this.userPrefs.calcDueReminderDatetime(this.schDueDate);
+            const remindAt = Math.floor(new Date(remindAtStr).getTime() / 1000);
+            const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+            this.api.post(`/notifications/reminders/${this.todo.id}`, {
+              remindAt, label: 'Due date', notifyEmail,
+            }).subscribe(() => {
+              this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
+            });
+          }
+        });
+      }
     });
   }
 
