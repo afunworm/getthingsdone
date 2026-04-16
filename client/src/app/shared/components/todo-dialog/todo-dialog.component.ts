@@ -182,15 +182,11 @@ const DEFAULT_STEPS: StepDef[] = [
       <!-- ── Body ───────────────────────────────────────── -->
       <div class="dialog-body">
 
+        <!-- ── Create-only: title + priority ─────────────── -->
         @if (isCreate) {
-          <!-- Create form -->
           <div class="field">
             <label class="field-label">Task title *</label>
             <input class="field-input" [(ngModel)]="form.title" placeholder="What needs to be done?" />
-          </div>
-          <div class="field">
-            <label class="field-label">Description</label>
-            <textarea class="field-textarea" [(ngModel)]="form.description" rows="3" placeholder="Optional"></textarea>
           </div>
           <div class="field">
             <label class="field-label">Priority</label>
@@ -201,184 +197,34 @@ const DEFAULT_STEPS: StepDef[] = [
               }
             </select>
           </div>
-          <div class="section">
-            <div class="section-hdr">
-              <span class="section-label">Due Date</span>
-            </div>
-            <div class="sch-body">
-              <div class="sch-grid">
-                <div class="sch-row">
-                  <span class="material-icons sch-icon">event</span>
-                  <input type="date" class="sch-date-input" [(ngModel)]="form.dueDateStr" (ngModelChange)="onCreateDueDateChange($event)" />
-                  @if (form.dueDateStr) {
-                    <button class="sch-clear" (click)="form.dueDateStr = ''; onCreateDueDateChange('')" title="Clear due date">
-                      <span class="material-icons" style="font-size:12px">close</span>
-                    </button>
-                  }
-                </div>
-                <div class="sch-row">
-                  <span class="material-icons sch-icon">repeat</span>
-                  <label class="sch-toggle-label">
-                    <input type="checkbox" [(ngModel)]="form.isRecurring" />
-                    Recurring
-                  </label>
-                  @if (form.isRecurring) {
-                    <span class="sch-every">every</span>
-                    <input type="number" class="sch-num" min="1" [(ngModel)]="form.recurrenceInterval" />
-                    <select class="sch-type" [(ngModel)]="form.recurrenceType">
-                      <option value="daily">days</option>
-                      <option value="weekly">weeks</option>
-                      <option value="monthly">months</option>
-                      <option value="yearly">years</option>
-                    </select>
-                  }
-                </div>
-              </div>
-              @if (createNextOccurrences.length) {
-                <div class="sch-occurrences">
-                  <span class="sch-occ-label">Next occurrences</span>
-                  @for (d of createNextOccurrences; track d) {
-                    <span class="sch-occ-date">{{ d }}</span>
-                  }
-                </div>
-              }
-            </div>
-            @if (form.isRecurring && !form.dueDateStr) {
-              <p class="recur-warn">
-                <span class="material-icons" style="font-size:13px">warning</span>
-                A due date is required for recurring tasks.
-              </p>
-            }
-          </div>
-          <!-- Reminders (create mode) -->
-          <div class="field create-reminders-field">
-            <div class="create-reminders-hdr">
-              <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
-              <span class="field-label" style="margin:0">Reminders</span>
-              @if (form.pendingReminders.length) {
-                <span class="section-count">{{ form.pendingReminders.length }}</span>
-              }
-            </div>
-            @if (form.pendingReminders.length) {
-              <p class="reminder-edit-hint">Click a reminder time to change it.</p>
-            }
-            <div class="reminder-quick">
-              <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'day')">In 1 day</button>
-              <button class="reminder-quick-btn" (click)="addCreateReminderIn(3, 'day')">In 3 days</button>
-              <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'week')">In 1 week</button>
-              <span class="reminder-sep">or</span>
-              <input type="datetime-local" class="reminder-date-input" [(ngModel)]="createCustomReminderDate" />
-              @if (createCustomReminderDate) {
-                <button class="btn btn-primary btn-sm" (click)="addCreateCustomReminder()">Set</button>
-              }
-            </div>
-            @for (r of form.pendingReminders; track r.id) {
-              <div class="reminder-row reminder-pending" [class.reminder-new]="animatingReminderIds().has(r.id)">
-                <span class="material-icons" style="font-size:14px;color:#f57c00">alarm_add</span>
-                @if (editingReminderId() === r.id) {
-                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
-                    [value]="r.remindAt"
-                    (change)="r.remindAt = $any($event.target).value; editingReminderId.set(null)"
-                    (blur)="editingReminderId.set(null)"
-                    (keydown.escape)="editingReminderId.set(null)" />
-                } @else {
-                  <span class="reminder-time reminder-time-editable"
-                    (click)="editingReminderId.set(r.id)" title="Click to change time">
-                    {{ formatCreateReminder(r.remindAt) }}
-                  </span>
-                }
-                <span class="reminder-pending-badge">pending save</span>
-                <button class="btn-icon reminder-email-toggle" [class.active]="r.notifyEmail"
-                  (click)="r.notifyEmail = !r.notifyEmail"
-                  [title]="r.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
-                  <span class="material-icons" style="font-size:13px">email</span>
-                  <span class="reminder-email-label">Email</span>
-                </button>
-                <button class="btn-icon reminder-del" (click)="removeCreateReminder(r.id)" title="Remove reminder">
-                  <span class="material-icons" style="font-size:13px">close</span>
-                </button>
-              </div>
-            }
-          </div>
+        }
 
-          <!-- Assignees (create mode — projects only) -->
-          @if (!data.isInbox) {
-          <div class="field">
-            <label class="field-label">Assignees</label>
-            <div class="create-assignees">
-              @for (u of form.createAssignees.users; track u.id) {
-                <span class="chip user-chip">
-                  {{ u.name.split(' ')[0] }}
-                  <button class="chip-remove" (click)="removeCreateUser(u.id)">
-                    <span class="material-icons" style="font-size:11px">close</span>
-                  </button>
-                </span>
-              }
-              @for (t of form.createAssignees.teams; track t.id) {
-                <span class="chip team-chip">
-                  {{ t.name }}
-                  <button class="chip-remove" (click)="removeCreateTeam(t.id)">
-                    <span class="material-icons" style="font-size:11px">close</span>
-                  </button>
-                </span>
-              }
-              <button class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:4px" (click)="openCreateAssign()">
-                <span class="material-icons" style="font-size:13px">person_add</span>
-                Assign
+        <!-- ── Detail-only: parent task context ───────────── -->
+        @if (!isCreate && todo.parent_todo_id && todo._parent) {
+          <div class="parent-ctx">
+            <span class="parent-ctx-label">
+              <span class="material-icons" style="font-size:11px;vertical-align:middle">subdirectory_arrow_right</span>
+              {{ todo._parent.title }}
+            </span>
+            @if (todo._parent.description) {
+              <span class="ctx-desc">{{ todo._parent.description }}</span>
+            }
+          </div>
+        }
+
+        <!-- ── Description ────────────────────────────────── -->
+        <div class="section">
+          <div class="section-hdr">
+            <span class="section-label">Description</span>
+            @if (!isCreate && !editingDesc()) {
+              <button class="btn-icon edit-icon" (click)="startEditDesc()" title="Edit description">
+                <span class="material-icons" style="font-size:13px">edit</span>
               </button>
-            </div>
-          </div>
-          } <!-- end @if (!data.isInbox) -->
-
-          <!-- Sub-tasks (create mode) -->
-          <div class="field">
-            <label class="field-label">Sub-tasks</label>
-            @for (s of form.createSubtasks; track $index) {
-              <div class="create-subtask-row">
-                <span class="material-icons" style="font-size:13px;color:var(--text-muted)">subdirectory_arrow_right</span>
-                <span class="create-sub-title">{{ s }}</span>
-                <button class="btn-icon danger-btn" (click)="removeCreateSubtask($index)">
-                  <span class="material-icons" style="font-size:13px">close</span>
-                </button>
-              </div>
             }
-            <div class="subtask-add">
-              <input
-                class="subtask-input"
-                [(ngModel)]="newCreateSubtask"
-                placeholder="Add sub-task..."
-                (keydown.enter)="addCreateSubtask()"
-              />
-              @if (newCreateSubtask.trim()) {
-                <button class="btn btn-primary btn-sm" (click)="addCreateSubtask()">Add</button>
-              }
-            </div>
           </div>
-
-        } @else {
-          <!-- ── Parent task context (subtasks only) ───── -->
-          @if (todo.parent_todo_id && todo._parent) {
-            <div class="parent-ctx">
-              <span class="parent-ctx-label">
-                <span class="material-icons" style="font-size:11px;vertical-align:middle">subdirectory_arrow_right</span>
-                {{ todo._parent.title }}
-              </span>
-              @if (todo._parent.description) {
-                <span class="ctx-desc">{{ todo._parent.description }}</span>
-              }
-            </div>
-          }
-
-          <!-- ── Description ───────────────────────────── -->
-          <div class="section">
-            <div class="section-hdr">
-              <span class="section-label">Description</span>
-              @if (!editingDesc()) {
-                <button class="btn-icon edit-icon" (click)="startEditDesc()" title="Edit description">
-                  <span class="material-icons" style="font-size:13px">edit</span>
-                </button>
-              }
-            </div>
+          @if (isCreate) {
+            <textarea class="field-textarea" [(ngModel)]="form.description" rows="3" placeholder="Optional"></textarea>
+          } @else {
             @if (!editingDesc()) {
               @if (todo.description) {
                 <div class="desc-html" [innerHTML]="sanitize(todo.description)" (click)="onDescClick($event)"></div>
@@ -400,61 +246,86 @@ const DEFAULT_STEPS: StepDef[] = [
                 <button class="btn btn-ghost btn-sm" (click)="editingDesc.set(false)">Cancel</button>
               </div>
             }
-          </div>
+          }
+        </div>
 
-          <!-- ── Due Date ──────────────────────────────────── -->
-          <div class="section">
-            <div class="section-hdr">
-              <span class="section-label">Due Date</span>
-            </div>
-            <div class="sch-body">
-              <div class="sch-grid">
-                <div class="sch-row">
-                  <span class="material-icons sch-icon">event</span>
-                  <input type="date" class="sch-date-input"
-                    [ngModel]="schedDueDate()" (ngModelChange)="onSchedDueDateChange($event)" />
-                  @if (schedDueDate()) {
-                    <button class="sch-clear" (click)="onSchedDueDateChange('')" title="Clear due date">
+        <!-- ── Due Date / Schedule ────────────────────────── -->
+        <div class="section">
+          <div class="section-hdr">
+            <span class="section-label">Due Date</span>
+          </div>
+          <div class="sch-body">
+            <div class="sch-grid">
+              <div class="sch-row">
+                <span class="material-icons sch-icon">event</span>
+                @if (isCreate) {
+                  <input type="date" class="sch-date-input" [(ngModel)]="form.dueDateStr" (ngModelChange)="onDueDateChange($event)" />
+                  @if (form.dueDateStr) {
+                    <button class="sch-clear" (click)="onDueDateChange('')" title="Clear due date">
                       <span class="material-icons" style="font-size:12px">close</span>
                     </button>
                   }
-                </div>
-                <div class="sch-row">
-                  <span class="material-icons sch-icon">repeat</span>
+                } @else {
+                  <input type="date" class="sch-date-input" [ngModel]="schedDueDate()" (ngModelChange)="onDueDateChange($event)" />
+                  @if (schedDueDate()) {
+                    <button class="sch-clear" (click)="onDueDateChange('')" title="Clear due date">
+                      <span class="material-icons" style="font-size:12px">close</span>
+                    </button>
+                  }
+                }
+              </div>
+              <div class="sch-row">
+                <span class="material-icons sch-icon">repeat</span>
+                @if (isCreate) {
                   <label class="sch-toggle-label">
-                    <input type="checkbox"
-                      [ngModel]="schedRecurring()" (ngModelChange)="schedRecurring.set($event)" />
+                    <input type="checkbox" [(ngModel)]="form.isRecurring" />
                     Recurring
                   </label>
-                  @if (schedRecurring()) {
+                  @if (form.isRecurring) {
                     <span class="sch-every">every</span>
-                    <input type="number" class="sch-num" min="1"
-                      [ngModel]="schedInterval()" (ngModelChange)="schedInterval.set(+$event)" />
-                    <select class="sch-type"
-                      [ngModel]="schedType()" (ngModelChange)="schedType.set($event)">
+                    <input type="number" class="sch-num" min="1" [(ngModel)]="form.recurrenceInterval" />
+                    <select class="sch-type" [(ngModel)]="form.recurrenceType">
                       <option value="daily">days</option>
                       <option value="weekly">weeks</option>
                       <option value="monthly">months</option>
                       <option value="yearly">years</option>
                     </select>
                   }
-                </div>
-              </div>
-              @if (nextOccurrences().length) {
-                <div class="sch-occurrences">
-                  <span class="sch-occ-label">Next occurrences</span>
-                  @for (d of nextOccurrences(); track d) {
-                    <span class="sch-occ-date">{{ d }}</span>
+                } @else {
+                  <label class="sch-toggle-label">
+                    <input type="checkbox" [ngModel]="schedRecurring()" (ngModelChange)="schedRecurring.set($event)" />
+                    Recurring
+                  </label>
+                  @if (schedRecurring()) {
+                    <span class="sch-every">every</span>
+                    <input type="number" class="sch-num" min="1"
+                      [ngModel]="schedInterval()" (ngModelChange)="schedInterval.set(+$event)" />
+                    <select class="sch-type" [ngModel]="schedType()" (ngModelChange)="schedType.set($event)">
+                      <option value="daily">days</option>
+                      <option value="weekly">weeks</option>
+                      <option value="monthly">months</option>
+                      <option value="yearly">years</option>
+                    </select>
                   }
-                </div>
-              }
+                }
+              </div>
             </div>
-            @if (schedRecurring() && !schedDueDate()) {
-              <p class="recur-warn" style="margin-top:6px">
-                <span class="material-icons" style="font-size:13px">warning</span>
-                A due date is required for recurring tasks.
-              </p>
+            @if (isCreate ? createNextOccurrences.length : nextOccurrences().length) {
+              <div class="sch-occurrences">
+                <span class="sch-occ-label">Next occurrences</span>
+                @for (d of (isCreate ? createNextOccurrences : nextOccurrences()); track d) {
+                  <span class="sch-occ-date">{{ d }}</span>
+                }
+              </div>
             }
+          </div>
+          @if ((isCreate ? form.isRecurring : schedRecurring()) && !(isCreate ? form.dueDateStr : schedDueDate())) {
+            <p class="recur-warn" style="margin-top:6px">
+              <span class="material-icons" style="font-size:13px">warning</span>
+              A due date is required for recurring tasks.
+            </p>
+          }
+          @if (!isCreate) {
             @if (schedSaved()) {
               <div class="sch-saved-msg">
                 <span class="material-icons" style="font-size:13px">check_circle</span>
@@ -468,15 +339,17 @@ const DEFAULT_STEPS: StepDef[] = [
                 <button class="btn btn-ghost btn-sm" (click)="resetSchedule()">Cancel</button>
               </div>
             }
-          </div>
+          }
+        </div>
 
-          <!-- ── Reminders ─────────────────────────────────── -->
-          <div class="section">
-            <div class="section-hdr">
-              <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
-              <span class="section-label">Reminders</span>
-              <span class="section-count">{{ reminders().length }}</span>
-            </div>
+        <!-- ── Reminders ──────────────────────────────────── -->
+        <div class="section">
+          <div class="section-hdr">
+            <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
+            <span class="section-label">Reminders</span>
+            <span class="section-count">{{ isCreate ? form.pendingReminders.length : reminders().length }}</span>
+          </div>
+          @if (!isCreate) {
             @if (pendingDueDateReminder(); as pending) {
               <div class="reminder-row reminder-pending"
                 [class.reminder-new]="animatingReminderIds().has('pending-due')">
@@ -505,11 +378,21 @@ const DEFAULT_STEPS: StepDef[] = [
                 </button>
               </div>
             }
-            @if (reminders().length || pendingDueDateReminder()) {
-              <p class="reminder-edit-hint">Click a reminder time to change it.</p>
-            }
-            <!-- Quick add buttons -->
-            <div class="reminder-quick">
+          }
+          @if (isCreate ? form.pendingReminders.length : (reminders().length || pendingDueDateReminder())) {
+            <p class="reminder-edit-hint">Click a reminder time to change it.</p>
+          }
+          <div class="reminder-quick">
+            @if (isCreate) {
+              <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'day')">In 1 day</button>
+              <button class="reminder-quick-btn" (click)="addCreateReminderIn(3, 'day')">In 3 days</button>
+              <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'week')">In 1 week</button>
+              <span class="reminder-sep">or</span>
+              <input type="datetime-local" class="reminder-date-input" [(ngModel)]="createCustomReminderDate" />
+              @if (createCustomReminderDate) {
+                <button class="btn btn-primary btn-sm" (click)="addCreateCustomReminder()">Set</button>
+              }
+            } @else {
               <button class="reminder-quick-btn" (click)="addReminderIn(1, 'day')">In 1 day</button>
               <button class="reminder-quick-btn" (click)="addReminderIn(3, 'day')">In 3 days</button>
               <button class="reminder-quick-btn" (click)="addReminderIn(1, 'week')">In 1 week</button>
@@ -518,8 +401,37 @@ const DEFAULT_STEPS: StepDef[] = [
               @if (customReminderDate) {
                 <button class="btn btn-primary btn-sm" (click)="addCustomReminder()">Set</button>
               }
-            </div>
-            <!-- Existing reminders -->
+            }
+          </div>
+          @if (isCreate) {
+            @for (r of form.pendingReminders; track r.id) {
+              <div class="reminder-row reminder-pending" [class.reminder-new]="animatingReminderIds().has(r.id)">
+                <span class="material-icons" style="font-size:14px;color:#f57c00">alarm_add</span>
+                @if (editingReminderId() === r.id) {
+                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
+                    [value]="r.remindAt"
+                    (change)="r.remindAt = $any($event.target).value; editingReminderId.set(null)"
+                    (blur)="editingReminderId.set(null)"
+                    (keydown.escape)="editingReminderId.set(null)" />
+                } @else {
+                  <span class="reminder-time reminder-time-editable"
+                    (click)="editingReminderId.set(r.id)" title="Click to change time">
+                    {{ formatCreateReminder(r.remindAt) }}
+                  </span>
+                }
+                <span class="reminder-pending-badge">pending save</span>
+                <button class="btn-icon reminder-email-toggle" [class.active]="r.notifyEmail"
+                  (click)="r.notifyEmail = !r.notifyEmail"
+                  [title]="r.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
+                  <span class="material-icons" style="font-size:13px">email</span>
+                  <span class="reminder-email-label">Email</span>
+                </button>
+                <button class="btn-icon reminder-del" (click)="removeCreateReminder(r.id)" title="Remove reminder">
+                  <span class="material-icons" style="font-size:13px">close</span>
+                </button>
+              </div>
+            }
+          } @else {
             @for (r of reminders(); track r.id) {
               <div class="reminder-row" [class.reminder-sent]="r.sent"
                 [class.reminder-new]="animatingReminderIds().has(r.id)">
@@ -553,63 +465,112 @@ const DEFAULT_STEPS: StepDef[] = [
                 }
               </div>
             }
-            @if (reminders().length === 0) {
+            @if (reminders().length === 0 && !pendingDueDateReminder()) {
               <p class="no-reminders">No reminders set</p>
             }
-          </div>
+          }
+        </div>
 
-          <!-- ── Sub-tasks (only for top-level tasks) ─────── -->
-          @if (!todo.parent_todo_id) {
+        <!-- ── Assignees (create-only, projects only) ─────── -->
+        @if (isCreate && !data.isInbox) {
+          <div class="section">
+            <div class="section-hdr">
+              <span class="material-icons" style="font-size:14px;color:var(--text-muted)">person</span>
+              <span class="section-label">Assignees</span>
+            </div>
+            <div class="create-assignees">
+              @for (u of form.createAssignees.users; track u.id) {
+                <span class="chip user-chip">
+                  {{ u.name.split(' ')[0] }}
+                  <button class="chip-remove" (click)="removeCreateUser(u.id)">
+                    <span class="material-icons" style="font-size:11px">close</span>
+                  </button>
+                </span>
+              }
+              @for (t of form.createAssignees.teams; track t.id) {
+                <span class="chip team-chip">
+                  {{ t.name }}
+                  <button class="chip-remove" (click)="removeCreateTeam(t.id)">
+                    <span class="material-icons" style="font-size:11px">close</span>
+                  </button>
+                </span>
+              }
+              <button class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:4px" (click)="openCreateAssign()">
+                <span class="material-icons" style="font-size:13px">person_add</span>
+                Assign
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ── Sub-tasks ──────────────────────────────────── -->
+        @if (isCreate || !todo.parent_todo_id) {
           <div class="section">
             <div class="section-hdr">
               <span class="section-label">Sub-tasks</span>
-              <span class="section-count">{{ todo.subtodos?.length ?? 0 }}</span>
+              <span class="section-count">{{ isCreate ? form.createSubtasks.length : (todo.subtodos?.length ?? 0) }}</span>
             </div>
-
-            @for (sub of todo.subtodos ?? []; track sub.id) {
-              <div class="subtask-row" [class.sub-done]="isSubDone(sub)">
-                <span class="sub-chip" [ngStyle]="stepStyle(sub.flow_step_index)">
-                  {{ stepLabel(sub.flow_step_index) }}
-                </span>
-                <span class="sub-title">{{ sub.title }}</span>
-                <div class="sub-actions">
-                  <button class="icon-btn" (click)="advanceSub(sub)" [disabled]="isSubDone(sub)"
-                    [title]="'Move to: ' + subNextStepLabel(sub)">
-                    <span class="material-icons" style="font-size:14px">arrow_forward</span>
-                  </button>
-                  <button class="icon-btn sub-assign-btn" [class.sub-assigned]="subHasAssignees(sub)"
-                    (click)="openSubAssign(sub)" title="Assign">
-                    <span class="material-icons" style="font-size:13px">person_add</span>
-                  </button>
-                  <button class="icon-btn" [class.done-active]="isSubDone(sub)"
-                          (click)="isSubDone(sub) ? undoneSub(sub) : completeSub(sub)"
-                          [title]="isSubDone(sub) ? 'Click to undo' : 'Mark done'">
-                    <span class="material-icons" style="font-size:14px">
-                      {{ isSubDone(sub) ? 'check_circle' : 'check_circle_outline' }}
-                    </span>
-                  </button>
-                  <button class="icon-btn danger-btn" (click)="deleteSub(sub.id)" title="Delete">
-                    <span class="material-icons" style="font-size:13px">delete</span>
+            @if (!isCreate) {
+              @for (sub of todo.subtodos ?? []; track sub.id) {
+                <div class="subtask-row" [class.sub-done]="isSubDone(sub)">
+                  <span class="sub-chip" [ngStyle]="stepStyle(sub.flow_step_index)">
+                    {{ stepLabel(sub.flow_step_index) }}
+                  </span>
+                  <span class="sub-title">{{ sub.title }}</span>
+                  <div class="sub-actions">
+                    <button class="icon-btn" (click)="advanceSub(sub)" [disabled]="isSubDone(sub)"
+                      [title]="'Move to: ' + subNextStepLabel(sub)">
+                      <span class="material-icons" style="font-size:14px">arrow_forward</span>
+                    </button>
+                    <button class="icon-btn sub-assign-btn" [class.sub-assigned]="subHasAssignees(sub)"
+                      (click)="openSubAssign(sub)" title="Assign">
+                      <span class="material-icons" style="font-size:13px">person_add</span>
+                    </button>
+                    <button class="icon-btn" [class.done-active]="isSubDone(sub)"
+                            (click)="isSubDone(sub) ? undoneSub(sub) : completeSub(sub)"
+                            [title]="isSubDone(sub) ? 'Click to undo' : 'Mark done'">
+                      <span class="material-icons" style="font-size:14px">
+                        {{ isSubDone(sub) ? 'check_circle' : 'check_circle_outline' }}
+                      </span>
+                    </button>
+                    <button class="icon-btn danger-btn" (click)="deleteSub(sub.id)" title="Delete">
+                      <span class="material-icons" style="font-size:13px">delete</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+            @if (isCreate) {
+              @for (s of form.createSubtasks; track $index) {
+                <div class="create-subtask-row">
+                  <span class="material-icons" style="font-size:13px;color:var(--text-muted)">subdirectory_arrow_right</span>
+                  <span class="create-sub-title">{{ s }}</span>
+                  <button class="btn-icon danger-btn" (click)="removeCreateSubtask($index)">
+                    <span class="material-icons" style="font-size:13px">close</span>
                   </button>
                 </div>
-              </div>
+              }
             }
-
             <div class="subtask-add">
-              <input
-                class="subtask-input"
-                [(ngModel)]="newSubtask"
-                placeholder="Add sub-task..."
-                (keydown.enter)="addSubtask()"
-              />
-              @if (newSubtask.trim()) {
-                <button class="btn btn-primary btn-sm" (click)="addSubtask()">Add</button>
+              @if (isCreate) {
+                <input class="subtask-input" [(ngModel)]="newCreateSubtask"
+                  placeholder="Add sub-task..." (keydown.enter)="addCreateSubtask()" />
+                @if (newCreateSubtask.trim()) {
+                  <button class="btn btn-primary btn-sm" (click)="addCreateSubtask()">Add</button>
+                }
+              } @else {
+                <input class="subtask-input" [(ngModel)]="newSubtask"
+                  placeholder="Add sub-task..." (keydown.enter)="addSubtask()" />
+                @if (newSubtask.trim()) {
+                  <button class="btn btn-primary btn-sm" (click)="addSubtask()">Add</button>
+                }
               }
             </div>
           </div>
-          } <!-- end @if (!todo.parent_todo_id) -->
+        }
 
-          <!-- ── Attachments ────────────────────────────── -->
+        <!-- ── Detail-only: Attachments + Comments ────────── -->
+        @if (!isCreate) {
           <div class="section">
             <div class="section-hdr">
               <span class="section-label">Attachments</span>
@@ -639,15 +600,12 @@ const DEFAULT_STEPS: StepDef[] = [
                 </div>
               }
               <label class="att-add-btn">
-                <input type="file" multiple style="display:none"
-                  (change)="onTodoFilesSelected($event)" />
+                <input type="file" multiple style="display:none" (change)="onTodoFilesSelected($event)" />
                 <span class="material-icons" style="font-size:15px">attach_file</span>
                 Add files
               </label>
             </div>
           </div>
-
-          <!-- ── Comments ───────────────────────────────── -->
           <div class="section">
             <div class="section-hdr">
               <span class="section-label">Comments</span>
@@ -1746,6 +1704,15 @@ export class TodoDialogComponent implements OnInit {
 
   createCustomReminderDate = '';
   private createReminderAutoFillId: string | null = null;
+
+  onDueDateChange(val: string): void {
+    if (this.isCreate) {
+      this.form.dueDateStr = val;
+      this.onCreateDueDateChange(val);
+    } else {
+      this.onSchedDueDateChange(val);
+    }
+  }
 
   onCreateDueDateChange(dateStr: string): void {
     if (dateStr && !this.createReminderAutoFillId) {
