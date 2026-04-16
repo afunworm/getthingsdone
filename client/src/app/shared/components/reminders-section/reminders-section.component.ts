@@ -435,7 +435,7 @@ export class RemindersSectionComponent implements OnInit, OnChanges {
     if (existing?.userEdited) return;
     this.userPrefs.load();
     const remindAt = this.userPrefs.calcDueReminderDatetime(dateStr);
-    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+    const notifyEmail = this.notifSvc.getEffectiveSettings(null).email_upcoming;
     const isNew = !existing;
     this.pendingDueDateReminder.set({ remindAt, notifyEmail, userEdited: false });
     if (isNew) setTimeout(() => this.flashReminder('pending-due'), 30);
@@ -514,7 +514,7 @@ export class RemindersSectionComponent implements OnInit, OnChanges {
     const ms = unit === 'day' ? amount * 86400000 : amount * 7 * 86400000;
     const remindAt = Math.floor((Date.now() + ms) / 1000);
     const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
-    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+    const notifyEmail = this.notifSvc.getEffectiveSettings(null).email_upcoming;
     this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label, notifyEmail })
       .subscribe(r => {
         this.reminders.update(list => [...list, r]);
@@ -528,7 +528,7 @@ export class RemindersSectionComponent implements OnInit, OnChanges {
     if (!this.customRemindAt) return;
     const remindAt = Math.floor(new Date(this.customRemindAt).getTime() / 1000);
     if (remindAt <= Math.floor(Date.now() / 1000)) return;
-    const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+    const notifyEmail = this.notifSvc.getEffectiveSettings(null).email_upcoming;
     this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, notifyEmail })
       .subscribe(r => {
         this.reminders.update(list => [...list, r]);

@@ -283,44 +283,32 @@ import { APP_VERSION } from '../../version';
       <div class="notif-backdrop" (click)="projNotifOpen.set(false)"></div>
       <div class="proj-notif-panel" [style.top.px]="projNotifY()" [style.left.px]="projNotifX()">
         <div class="proj-notif-hdr">
-          <span class="proj-notif-title">{{ projNotifInbox()?.name }} notifications</span>
-          <button class="btn-icon" style="width:20px;height:20px" (click)="projNotifOpen.set(false)">
+          <span class="proj-notif-title">{{ projNotifInbox()?.name }}</span>
+          <div class="pn-ch-legend">
+            <span class="material-icons" style="font-size:12px;color:var(--text-muted)" title="In-app + toast">notifications</span>
+            <span class="material-icons" style="font-size:12px;color:var(--text-muted)" title="Email">email</span>
+          </div>
+          <button class="btn-icon" style="width:20px;height:20px;margin-left:4px" (click)="projNotifOpen.set(false)">
             <span class="material-icons" style="font-size:13px">close</span>
           </button>
         </div>
         @if (projNotifSettings()) {
           <div class="proj-notif-body">
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.on_task_created"
-                (change)="saveProjNotif('on_task_created', $any($event.target).checked)" />
-              Task created
-            </label>
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.on_task_deleted"
-                (change)="saveProjNotif('on_task_deleted', $any($event.target).checked)" />
-              Task deleted
-            </label>
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.on_task_updated"
-                (change)="saveProjNotif('on_task_updated', $any($event.target).checked)" />
-              Task updated
-            </label>
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.on_task_comment"
-                (change)="saveProjNotif('on_task_comment', $any($event.target).checked)" />
-              Comments
-            </label>
-            <div class="pn-divider"></div>
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.notify_email"
-                (change)="saveProjNotif('notify_email', $any($event.target).checked)" />
-              Email notifications
-            </label>
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.notify_toast"
-                (change)="saveProjNotif('notify_toast', $any($event.target).checked)" />
-              Toast + sound
-            </label>
+            @for (row of pnRows; track row.bellKey) {
+              <div class="pn-row">
+                <span class="pn-label">{{ row.label }}</span>
+                <button class="pn-ch-btn" [class.pn-ch-on]="$any(projNotifSettings())[row.bellKey]"
+                  (click)="saveProjNotif(row.bellKey, !$any(projNotifSettings())[row.bellKey])"
+                  title="In-app + toast">
+                  <span class="material-icons">{{ $any(projNotifSettings())[row.bellKey] ? 'notifications' : 'notifications_off' }}</span>
+                </button>
+                <button class="pn-ch-btn" [class.pn-ch-on]="$any(projNotifSettings())[row.emailKey]"
+                  (click)="saveProjNotif(row.emailKey, !$any(projNotifSettings())[row.emailKey])"
+                  title="Email">
+                  <span class="material-icons">{{ $any(projNotifSettings())[row.emailKey] ? 'email' : 'mail_outline' }}</span>
+                </button>
+              </div>
+            }
             <div class="pn-reset">
               <button class="notif-action-btn" (click)="resetProjNotif()">Reset to global defaults</button>
             </div>
@@ -771,7 +759,7 @@ import { APP_VERSION } from '../../version';
       /* Per-project notif settings popover */
       .proj-notif-panel {
         position: fixed;
-        width: 240px;
+        width: 260px;
         background: var(--surface-card);
         border: 1px solid var(--surface-border);
         border-radius: 10px;
@@ -784,18 +772,30 @@ import { APP_VERSION } from '../../version';
         to   { opacity: 1; transform: scale(1); }
       }
       .proj-notif-hdr {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 10px 12px 6px;
+        display: flex; align-items: center; gap: 6px;
+        padding: 9px 10px 7px 12px;
         border-bottom: 1px solid var(--surface-border);
       }
-      .proj-notif-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-      .proj-notif-body { padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 5px; }
-      .pn-row {
-        display: flex; align-items: center; gap: 7px;
-        font-size: 12px; color: var(--text-secondary); cursor: pointer;
-        input[type=checkbox] { cursor: pointer; accent-color: var(--accent-color); }
+      .proj-notif-title { font-size: 12px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; }
+      .pn-ch-legend {
+        display: flex; gap: 2px; flex-shrink: 0;
+        .material-icons { width: 26px; text-align: center; }
       }
-      .pn-divider { height: 1px; background: var(--surface-border); margin: 4px 0; }
+      .proj-notif-body { padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+      .pn-row {
+        display: flex; align-items: center; gap: 4px;
+        padding: 2px 0;
+      }
+      .pn-label { flex: 1; font-size: 12px; color: var(--text-secondary); }
+      .pn-ch-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 26px; height: 26px; border-radius: 5px; border: 0; flex-shrink: 0;
+        background: transparent; color: var(--text-muted); cursor: pointer;
+        transition: background 100ms, color 100ms;
+        .material-icons { font-size: 14px; }
+        &:hover { background: var(--surface-hover); color: var(--text-secondary); }
+        &.pn-ch-on { color: var(--accent-color); }
+      }
       .pn-reset { margin-top: 6px; text-align: center; }
 
       /* Toasts */
@@ -1134,6 +1134,14 @@ export class ShellComponent implements OnInit, OnDestroy {
   projNotifX        = signal(0);
   projNotifY        = signal(0);
   projNotifSettings = signal<any>(null);
+
+  readonly pnRows = [
+    { bellKey: 'on_task_created',  emailKey: 'email_task_created',  label: 'Task created'  },
+    { bellKey: 'on_task_deleted',  emailKey: 'email_task_deleted',  label: 'Task deleted'  },
+    { bellKey: 'on_task_updated',  emailKey: 'email_task_updated',  label: 'Task updated'  },
+    { bellKey: 'on_task_comment',  emailKey: 'email_task_comment',  label: 'Comments'      },
+    { bellKey: 'on_task_assigned', emailKey: 'email_task_assigned', label: 'Task assigned' },
+  ];
 
   // Reminder modal queue
   reminderQueue = signal<AppNotification['payload'][]>([]);

@@ -34,9 +34,13 @@ export interface NotificationSettings {
   on_upcoming: boolean;
   upcoming_hours: number;
   on_past_due: boolean;
-  notify_app: boolean;
-  notify_email: boolean;
-  notify_toast: boolean;
+  email_task_created: boolean;
+  email_task_deleted: boolean;
+  email_task_updated: boolean;
+  email_task_assigned: boolean;
+  email_task_comment: boolean;
+  email_upcoming: boolean;
+  email_past_due: boolean;
 }
 
 const DEFAULTS: NotificationSettings = {
@@ -48,9 +52,13 @@ const DEFAULTS: NotificationSettings = {
   on_upcoming: true,
   upcoming_hours: 24,
   on_past_due: true,
-  notify_app: true,
-  notify_email: false,
-  notify_toast: true,
+  email_task_created: false,
+  email_task_deleted: false,
+  email_task_updated: false,
+  email_task_assigned: false,
+  email_task_comment: false,
+  email_upcoming: false,
+  email_past_due: false,
 };
 
 @Injectable()
@@ -111,17 +119,21 @@ export class NotificationsService {
   private rowToSettings(row: any): Partial<NotificationSettings> {
     if (!row) return {};
     return {
-      on_task_created:  !!row.on_task_created,
-      on_task_deleted:  !!row.on_task_deleted,
-      on_task_updated:  !!row.on_task_updated,
-      on_task_assigned: !!row.on_task_assigned,
-      on_task_comment:  !!row.on_task_comment,
-      on_upcoming:      !!row.on_upcoming,
-      upcoming_hours:   row.upcoming_hours ?? 24,
-      on_past_due:      !!row.on_past_due,
-      notify_app:       !!row.notify_app,
-      notify_email:     !!row.notify_email,
-      notify_toast:     !!row.notify_toast,
+      on_task_created:     !!row.on_task_created,
+      on_task_deleted:     !!row.on_task_deleted,
+      on_task_updated:     !!row.on_task_updated,
+      on_task_assigned:    !!row.on_task_assigned,
+      on_task_comment:     !!row.on_task_comment,
+      on_upcoming:         !!row.on_upcoming,
+      upcoming_hours:      row.upcoming_hours ?? 24,
+      on_past_due:         !!row.on_past_due,
+      email_task_created:  !!row.email_task_created,
+      email_task_deleted:  !!row.email_task_deleted,
+      email_task_updated:  !!row.email_task_updated,
+      email_task_assigned: !!row.email_task_assigned,
+      email_task_comment:  !!row.email_task_comment,
+      email_upcoming:      !!row.email_upcoming,
+      email_past_due:      !!row.email_past_due,
     };
   }
 
@@ -136,34 +148,43 @@ export class NotificationsService {
       ? this.db.prepare('SELECT * FROM notification_settings WHERE user_id = ? AND project_id = ?').get(userId, projectId)
       : this.db.prepare('SELECT * FROM notification_settings WHERE user_id = ? AND project_id IS NULL').get(userId);
 
+    const b = (v: boolean | undefined) => v !== undefined ? (v ? 1 : 0) : null;
     if (existing) {
       this.db.prepare(`
         UPDATE notification_settings SET
-          on_task_created  = COALESCE(?, on_task_created),
-          on_task_deleted  = COALESCE(?, on_task_deleted),
-          on_task_updated  = COALESCE(?, on_task_updated),
-          on_task_assigned = COALESCE(?, on_task_assigned),
-          on_task_comment  = COALESCE(?, on_task_comment),
-          on_upcoming      = COALESCE(?, on_upcoming),
-          upcoming_hours   = COALESCE(?, upcoming_hours),
-          on_past_due      = COALESCE(?, on_past_due),
-          notify_app       = COALESCE(?, notify_app),
-          notify_email     = COALESCE(?, notify_email),
-          notify_toast     = COALESCE(?, notify_toast),
-          updated_at       = unixepoch()
+          on_task_created     = COALESCE(?, on_task_created),
+          on_task_deleted     = COALESCE(?, on_task_deleted),
+          on_task_updated     = COALESCE(?, on_task_updated),
+          on_task_assigned    = COALESCE(?, on_task_assigned),
+          on_task_comment     = COALESCE(?, on_task_comment),
+          on_upcoming         = COALESCE(?, on_upcoming),
+          upcoming_hours      = COALESCE(?, upcoming_hours),
+          on_past_due         = COALESCE(?, on_past_due),
+          email_task_created  = COALESCE(?, email_task_created),
+          email_task_deleted  = COALESCE(?, email_task_deleted),
+          email_task_updated  = COALESCE(?, email_task_updated),
+          email_task_assigned = COALESCE(?, email_task_assigned),
+          email_task_comment  = COALESCE(?, email_task_comment),
+          email_upcoming      = COALESCE(?, email_upcoming),
+          email_past_due      = COALESCE(?, email_past_due),
+          updated_at          = unixepoch()
         WHERE id = ?
       `).run(
-        partial.on_task_created  !== undefined ? (partial.on_task_created  ? 1 : 0) : null,
-        partial.on_task_deleted  !== undefined ? (partial.on_task_deleted  ? 1 : 0) : null,
-        partial.on_task_updated  !== undefined ? (partial.on_task_updated  ? 1 : 0) : null,
-        partial.on_task_assigned !== undefined ? (partial.on_task_assigned ? 1 : 0) : null,
-        partial.on_task_comment  !== undefined ? (partial.on_task_comment  ? 1 : 0) : null,
-        partial.on_upcoming      !== undefined ? (partial.on_upcoming      ? 1 : 0) : null,
-        partial.upcoming_hours   !== undefined ? partial.upcoming_hours               : null,
-        partial.on_past_due      !== undefined ? (partial.on_past_due      ? 1 : 0) : null,
-        partial.notify_app       !== undefined ? (partial.notify_app       ? 1 : 0) : null,
-        partial.notify_email     !== undefined ? (partial.notify_email     ? 1 : 0) : null,
-        partial.notify_toast     !== undefined ? (partial.notify_toast     ? 1 : 0) : null,
+        b(partial.on_task_created),
+        b(partial.on_task_deleted),
+        b(partial.on_task_updated),
+        b(partial.on_task_assigned),
+        b(partial.on_task_comment),
+        b(partial.on_upcoming),
+        partial.upcoming_hours !== undefined ? partial.upcoming_hours : null,
+        b(partial.on_past_due),
+        b(partial.email_task_created),
+        b(partial.email_task_deleted),
+        b(partial.email_task_updated),
+        b(partial.email_task_assigned),
+        b(partial.email_task_comment),
+        b(partial.email_upcoming),
+        b(partial.email_past_due),
         existing.id,
       );
     } else {
@@ -173,8 +194,9 @@ export class NotificationsService {
           (id, user_id, project_id,
            on_task_created, on_task_deleted, on_task_updated, on_task_assigned, on_task_comment,
            on_upcoming, upcoming_hours, on_past_due,
-           notify_app, notify_email, notify_toast)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           email_task_created, email_task_deleted, email_task_updated, email_task_assigned,
+           email_task_comment, email_upcoming, email_past_due)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         uuidv4(), userId, projectId ?? null,
         current.on_task_created  ? 1 : 0,
@@ -184,10 +206,14 @@ export class NotificationsService {
         current.on_task_comment  ? 1 : 0,
         current.on_upcoming      ? 1 : 0,
         current.upcoming_hours,
-        current.on_past_due      ? 1 : 0,
-        current.notify_app       ? 1 : 0,
-        current.notify_email     ? 1 : 0,
-        current.notify_toast     ? 1 : 0,
+        current.on_past_due          ? 1 : 0,
+        current.email_task_created   ? 1 : 0,
+        current.email_task_deleted   ? 1 : 0,
+        current.email_task_updated   ? 1 : 0,
+        current.email_task_assigned  ? 1 : 0,
+        current.email_task_comment   ? 1 : 0,
+        current.email_upcoming       ? 1 : 0,
+        current.email_past_due       ? 1 : 0,
       );
     }
   }
@@ -231,14 +257,13 @@ export class NotificationsService {
       if (!settings[type]) continue;
 
       const id = uuidv4();
-      if (settings.notify_app) {
-        this.db.prepare(
-          'INSERT INTO notifications (id, user_id, type, payload) VALUES (?, ?, ?, ?)',
-        ).run(id, userId, payload.type, JSON.stringify(payload));
-        this.streams.get(userId)?.next(payload);
-      }
+      this.db.prepare(
+        'INSERT INTO notifications (id, user_id, type, payload) VALUES (?, ?, ?, ?)',
+      ).run(id, userId, payload.type, JSON.stringify(payload));
+      this.streams.get(userId)?.next(payload);
 
-      if (settings.notify_email) {
+      const emailKey = ('email_' + type.replace('on_', '')) as keyof NotificationSettings;
+      if (settings[emailKey]) {
         const user = this.db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as any;
         if (user?.email) {
           this.mail.send(user.email, payload.title, this.buildEmailHtml(payload)).catch(() => {});
@@ -262,20 +287,13 @@ export class NotificationsService {
     if (!settings[type]) return;
 
     const id = uuidv4();
-    if (settings.notify_app) {
-      this.db.prepare(
-        'INSERT INTO notifications (id, user_id, type, payload) VALUES (?, ?, ?, ?)',
-      ).run(id, userId, payload.type, JSON.stringify(payload));
-      this.streams.get(userId)?.next(payload);
-    }
+    this.db.prepare(
+      'INSERT INTO notifications (id, user_id, type, payload) VALUES (?, ?, ?, ?)',
+    ).run(id, userId, payload.type, JSON.stringify(payload));
+    this.streams.get(userId)?.next(payload);
 
-    // For direct assignment notifications, always use global email preference —
-    // a per-inbox email mute should not suppress "you were assigned" emails.
-    const emailSettings = type === 'on_task_assigned'
-      ? this.getEffectiveSettings(userId, null)
-      : settings;
-
-    if (!skipEmail && emailSettings.notify_email) {
+    const emailKey = ('email_' + type.replace('on_', '')) as keyof NotificationSettings;
+    if (!skipEmail && settings[emailKey]) {
       const user = this.db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as any;
       if (user?.email) {
         this.mail.send(user.email, payload.title, this.buildEmailHtml(payload)).catch(() => {});

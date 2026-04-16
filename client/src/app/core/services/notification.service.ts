@@ -30,9 +30,13 @@ export interface NotificationSettings {
   on_upcoming: boolean;
   upcoming_hours: number;
   on_past_due: boolean;
-  notify_app: boolean;
-  notify_email: boolean;
-  notify_toast: boolean;
+  email_task_created: boolean;
+  email_task_deleted: boolean;
+  email_task_updated: boolean;
+  email_task_assigned: boolean;
+  email_task_comment: boolean;
+  email_upcoming: boolean;
+  email_past_due: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -89,7 +93,9 @@ export class NotificationService {
     const defaults: NotificationSettings = {
       on_task_created: true, on_task_deleted: true, on_task_updated: true,
       on_task_assigned: true, on_task_comment: true, on_upcoming: true, upcoming_hours: 24,
-      on_past_due: true, notify_app: true, notify_email: false, notify_toast: true,
+      on_past_due: true,
+      email_task_created: false, email_task_deleted: false, email_task_updated: false,
+      email_task_assigned: false, email_task_comment: false, email_upcoming: false, email_past_due: false,
     };
     return {
       ...defaults,
@@ -101,17 +107,21 @@ export class NotificationService {
   private rowToSettings(row: any): Partial<NotificationSettings> {
     if (!row) return {};
     return {
-      on_task_created:  !!row.on_task_created,
-      on_task_deleted:  !!row.on_task_deleted,
-      on_task_updated:  !!row.on_task_updated,
-      on_task_assigned: !!row.on_task_assigned,
-      on_task_comment:  !!row.on_task_comment,
-      on_upcoming:      !!row.on_upcoming,
-      upcoming_hours:   row.upcoming_hours ?? 24,
-      on_past_due:      !!row.on_past_due,
-      notify_app:       !!row.notify_app,
-      notify_email:     !!row.notify_email,
-      notify_toast:     !!row.notify_toast,
+      on_task_created:     !!row.on_task_created,
+      on_task_deleted:     !!row.on_task_deleted,
+      on_task_updated:     !!row.on_task_updated,
+      on_task_assigned:    !!row.on_task_assigned,
+      on_task_comment:     !!row.on_task_comment,
+      on_upcoming:         !!row.on_upcoming,
+      upcoming_hours:      row.upcoming_hours ?? 24,
+      on_past_due:         !!row.on_past_due,
+      email_task_created:  !!row.email_task_created,
+      email_task_deleted:  !!row.email_task_deleted,
+      email_task_updated:  !!row.email_task_updated,
+      email_task_assigned: !!row.email_task_assigned,
+      email_task_comment:  !!row.email_task_comment,
+      email_upcoming:      !!row.email_upcoming,
+      email_past_due:      !!row.email_past_due,
     };
   }
 
@@ -158,13 +168,10 @@ export class NotificationService {
         this.notifications.update((list) => [fake, ...list]);
         this.refresh$.next(payload);
 
-        // Show toast + ding if user has it enabled
         // task_reminder events are handled by the reminder modal in the shell — skip toast
-        const global = this.allSettings().find((r) => r.project_id == null);
-        const toastEnabled = global ? !!global.notify_toast : true;
         if (payload.type === 'task_reminder') {
           this.playDing();
-        } else if (toastEnabled) {
+        } else {
           this.toast.showNotification(payload.title, payload.body, payload.link);
           this.playDing();
         }

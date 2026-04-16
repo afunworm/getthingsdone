@@ -436,7 +436,7 @@ export class DueDateSectionComponent implements OnInit, OnChanges {
               const remindAt = Math.floor(
                 new Date(this.userPrefs.calcDueReminderDatetime(this.dueDate())).getTime() / 1000,
               );
-              const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
+              const notifyEmail = this.notifSvc.getEffectiveSettings(null).email_upcoming;
               this.api.post<any>(`/notifications/reminders/${this.todo.id}`, {
                 remindAt, label: 'Due date', notifyEmail,
               }).subscribe(() => {

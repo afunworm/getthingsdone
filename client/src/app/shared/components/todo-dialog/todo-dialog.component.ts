@@ -1408,7 +1408,7 @@ export class TodoDialogComponent implements OnInit {
       const id = crypto.randomUUID();
       this.form.pendingReminders = [
         ...this.form.pendingReminders,
-        { id, remindAt, label: 'Due date', notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email },
+        { id, remindAt, label: 'Due date', notifyEmail: this.notifSvc.getEffectiveSettings(null).email_upcoming },
       ];
       this.createReminderAutoFillId = id;
       setTimeout(() => this.flashReminder(id), 30);
@@ -1428,7 +1428,7 @@ export class TodoDialogComponent implements OnInit {
     const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
     this.form.pendingReminders = [
       ...this.form.pendingReminders,
-      { id: crypto.randomUUID(), remindAt, label, notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email },
+      { id: crypto.randomUUID(), remindAt, label, notifyEmail: this.notifSvc.getEffectiveSettings(null).email_upcoming },
     ];
   }
 
@@ -1440,7 +1440,7 @@ export class TodoDialogComponent implements OnInit {
         id: crypto.randomUUID(),
         remindAt: this.createCustomReminderDate,
         label: '',
-        notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email,
+        notifyEmail: this.notifSvc.getEffectiveSettings(null).email_upcoming,
       },
     ];
     this.createCustomReminderDate = '';

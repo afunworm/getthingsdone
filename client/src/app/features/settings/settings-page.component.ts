@@ -10,21 +10,30 @@ import { UserPrefsService, DUE_REMINDER_PRESETS } from '../../core/services/user
 
 const TIMEZONES = Intl.supportedValuesOf('timeZone');
 
-interface SettingRow {
-  key: keyof NotificationSettings;
+type BellKey  = Extract<keyof NotificationSettings, `on_${string}`>;
+type EmailKey = Extract<keyof NotificationSettings, `email_${string}`>;
+
+interface EventRow {
+  bellKey:  BellKey;
+  emailKey: EmailKey;
   label: string;
   description: string;
   icon: string;
-  type: 'toggle' | 'number';
 }
 
-const EVENT_ROWS: SettingRow[] = [
-  { key: 'on_task_created',  label: 'Task created',           description: 'When a new task is added to a project you belong to',      icon: 'add_circle_outline',  type: 'toggle' },
-  { key: 'on_task_deleted',  label: 'Task deleted',           description: 'When a task is removed from a project',                    icon: 'delete_outline',      type: 'toggle' },
-  { key: 'on_task_updated',  label: 'Task updated',           description: "When a task's title, description, or due date changes",    icon: 'edit',                type: 'toggle' },
-  { key: 'on_task_assigned', label: 'Task assigned',          description: 'When a task is assigned or unassigned to you or your department. Email for this always follows your global email setting, not per-inbox overrides.', icon: 'person_add', type: 'toggle' },
-  { key: 'on_task_comment',  label: 'Comments',               description: 'When someone leaves a comment on a task',                  icon: 'chat_bubble_outline', type: 'toggle' },
+// All 7 events shown in global settings
+const EVENT_ROWS: EventRow[] = [
+  { bellKey: 'on_task_created',  emailKey: 'email_task_created',  label: 'Task created',        description: 'When a new task is added to a project you belong to',                   icon: 'add_circle_outline'  },
+  { bellKey: 'on_task_deleted',  emailKey: 'email_task_deleted',  label: 'Task deleted',        description: 'When a task is removed from a project',                                 icon: 'delete_outline'      },
+  { bellKey: 'on_task_updated',  emailKey: 'email_task_updated',  label: 'Task updated',        description: "When a task's title, description, or due date changes",                 icon: 'edit'                },
+  { bellKey: 'on_task_assigned', emailKey: 'email_task_assigned', label: 'Task assigned',       description: 'When a task is assigned or unassigned to you or your department',       icon: 'person_add'          },
+  { bellKey: 'on_task_comment',  emailKey: 'email_task_comment',  label: 'Comments',            description: 'When someone leaves a comment on a task',                               icon: 'chat_bubble_outline' },
+  { bellKey: 'on_upcoming',      emailKey: 'email_upcoming',      label: 'Upcoming reminders',  description: 'In-app reminder alert before a task\'s due date',                       icon: 'alarm'               },
+  { bellKey: 'on_past_due',      emailKey: 'email_past_due',      label: 'Overdue tasks',       description: 'Daily summary of tasks that are past their due date',                   icon: 'schedule'            },
 ];
+
+// Per-inbox overrides only show project-scoped task events
+const INBOX_EVENT_ROWS: EventRow[] = EVENT_ROWS.slice(0, 5);
 
 @Component({
   selector: 'app-settings-page',
@@ -122,72 +131,42 @@ const EVENT_ROWS: SettingRow[] = [
             <div class="section-block">
               <h2 class="section-title">Notification preferences</h2>
               <p class="section-desc">
-                Control what you're notified about and how. Project-specific overrides
-                can be set from the bell icon next to each inbox in the sidebar.
+                Control what you're notified about and how. Use the
+                <span class="material-icons" style="font-size:13px;vertical-align:middle">notifications</span>
+                icon to toggle in-app + toast alerts and the
+                <span class="material-icons" style="font-size:13px;vertical-align:middle">email</span>
+                icon to toggle email delivery — per event.
+                Project-specific overrides can be set from the bell icon next to each inbox in the sidebar.
               </p>
             </div>
 
-            <!-- Delivery channels -->
+            <!-- Event toggles -->
             <div class="card">
-              <div class="card-hdr">How you'll be notified</div>
-              <div class="channel-rows">
-                <div class="channel-row">
-                  <span class="material-icons channel-icon" style="color:var(--accent-color)">notifications</span>
-                  <div class="channel-info">
-                    <div class="channel-label">In-app notifications</div>
-                    <div class="channel-desc">Bell icon in the sidebar</div>
-                  </div>
-                  <label class="toggle" title="Always on">
-                    <input type="checkbox" [checked]="true" disabled />
-                    <span class="slider"></span>
-                  </label>
-                </div>
-                <div class="channel-row">
-                  <span class="material-icons channel-icon" style="color:#8e24aa">notifications_active</span>
-                  <div class="channel-info">
-                    <div class="channel-label">Toast + sound</div>
-                    <div class="channel-desc">Pop-up toast with a ding when something happens</div>
-                  </div>
-                  <label class="toggle">
-                    <input type="checkbox"
-                      [checked]="globalSettings().notify_toast"
-                      (change)="saveGlobal('notify_toast', $any($event.target).checked)" />
-                    <span class="slider"></span>
-                  </label>
-                </div>
-                <div class="channel-row">
-                  <span class="material-icons channel-icon" style="color:#039be5">email</span>
-                  <div class="channel-info">
-                    <div class="channel-label">Email</div>
-                    <div class="channel-desc">Sent to {{ userEmail() }}</div>
-                  </div>
-                  <label class="toggle">
-                    <input type="checkbox"
-                      [checked]="globalSettings().notify_email"
-                      (change)="saveGlobal('notify_email', $any($event.target).checked)" />
-                    <span class="slider"></span>
-                  </label>
+              <div class="card-hdr">
+                What you'll be notified about
+                <div class="ch-legend">
+                  <span class="material-icons ch-legend-icon" title="In-app + toast">notifications</span>
+                  <span class="material-icons ch-legend-icon" title="Email">email</span>
                 </div>
               </div>
-            </div>
-
-            <!-- Event toggles -->
-            <div class="card" style="margin-top:16px">
-              <div class="card-hdr">What you'll be notified about</div>
               <div class="event-rows">
-                @for (row of eventRows; track row.key) {
+                @for (row of eventRows; track row.bellKey) {
                   <div class="event-row">
                     <span class="material-icons event-icon">{{ row.icon }}</span>
                     <div class="event-info">
                       <div class="event-label">{{ row.label }}</div>
                       <div class="event-desc">{{ row.description }}</div>
                     </div>
-                    <label class="toggle">
-                      <input type="checkbox"
-                        [checked]="globalSettings()[row.key]"
-                        (change)="saveGlobal(row.key, $any($event.target).checked)" />
-                      <span class="slider"></span>
-                    </label>
+                    <button class="ch-btn" [class.ch-on]="globalSettings()[row.bellKey]"
+                      (click)="saveGlobal(row.bellKey, !globalSettings()[row.bellKey])"
+                      title="In-app + toast">
+                      <span class="material-icons">{{ globalSettings()[row.bellKey] ? 'notifications' : 'notifications_off' }}</span>
+                    </button>
+                    <button class="ch-btn" [class.ch-on]="globalSettings()[row.emailKey]"
+                      (click)="saveGlobal(row.emailKey, !globalSettings()[row.emailKey])"
+                      title="Email ({{ userEmail() }})">
+                      <span class="material-icons">{{ globalSettings()[row.emailKey] ? 'email' : 'mail_outline' }}</span>
+                    </button>
                   </div>
                 }
               </div>
@@ -221,29 +200,26 @@ const EVENT_ROWS: SettingRow[] = [
                     </div>
                     @if (expandedInbox() === inbox.id) {
                       <div class="inbox-expand">
-                        @for (row of eventRows; track row.key) {
-                          <label class="ie-row">
-                            <input type="checkbox"
-                              [checked]="projSettings(inbox.id)[row.key]"
-                              (change)="saveProj(inbox.id, row.key, $any($event.target).checked)" />
+                        <div class="ie-header">
+                          <span class="material-icons ie-ch-legend" title="In-app + toast">notifications</span>
+                          <span class="material-icons ie-ch-legend" title="Email">email</span>
+                        </div>
+                        @for (row of inboxEventRows; track row.bellKey) {
+                          <div class="ie-row">
                             <span class="material-icons ie-icon">{{ row.icon }}</span>
-                            {{ row.label }}
-                          </label>
+                            <span class="ie-label">{{ row.label }}</span>
+                            <button class="ie-ch-btn" [class.ie-ch-on]="projSettings(inbox.id)[row.bellKey]"
+                              (click)="saveProj(inbox.id, row.bellKey, !projSettings(inbox.id)[row.bellKey])"
+                              title="In-app + toast">
+                              <span class="material-icons">{{ projSettings(inbox.id)[row.bellKey] ? 'notifications' : 'notifications_off' }}</span>
+                            </button>
+                            <button class="ie-ch-btn" [class.ie-ch-on]="projSettings(inbox.id)[row.emailKey]"
+                              (click)="saveProj(inbox.id, row.emailKey, !projSettings(inbox.id)[row.emailKey])"
+                              title="Email">
+                              <span class="material-icons">{{ projSettings(inbox.id)[row.emailKey] ? 'email' : 'mail_outline' }}</span>
+                            </button>
+                          </div>
                         }
-                        <label class="ie-row">
-                          <input type="checkbox"
-                            [checked]="projSettings(inbox.id).notify_email"
-                            (change)="saveProj(inbox.id, 'notify_email', $any($event.target).checked)" />
-                          <span class="material-icons ie-icon">email</span>
-                          Email
-                        </label>
-                        <label class="ie-row">
-                          <input type="checkbox"
-                            [checked]="projSettings(inbox.id).notify_toast"
-                            (change)="saveProj(inbox.id, 'notify_toast', $any($event.target).checked)" />
-                          <span class="material-icons ie-icon">notifications_active</span>
-                          Toast + sound
-                        </label>
                         @if (hasOverride(inbox.id)) {
                           <button class="reset-btn" (click)="resetProj(inbox.id)">
                             <span class="material-icons" style="font-size:13px">refresh</span>
@@ -326,24 +302,11 @@ const EVENT_ROWS: SettingRow[] = [
       font-family: inherit; font-size: 13px; cursor: pointer;
     }
 
-    /* Channels */
-    .channel-rows { }
-    .channel-row {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--surface-border);
-      &:last-child { border-bottom: 0; }
-    }
-    .channel-icon { font-size: 20px; flex-shrink: 0; }
-    .channel-info { flex: 1; min-width: 0; }
-    .channel-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-    .channel-desc  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
-
     /* Events */
     .event-rows { }
     .event-row {
       display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px;
+      padding: 10px 14px 10px 16px;
       border-bottom: 1px solid var(--surface-border);
       &:last-child { border-bottom: 0; }
     }
@@ -352,27 +315,20 @@ const EVENT_ROWS: SettingRow[] = [
     .event-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
     .event-desc  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 
-    /* Toggle switch */
-    .toggle {
-      position: relative; display: inline-block;
-      width: 36px; height: 20px; flex-shrink: 0;
-      input { opacity: 0; width: 0; height: 0; }
+    /* Channel icon header in card-hdr */
+    .ch-legend { display: flex; gap: 4px; margin-left: auto; }
+    .ch-legend-icon { font-size: 14px; color: var(--text-muted); width: 28px; text-align: center; }
+
+    /* Channel icon toggle buttons */
+    .ch-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; border: 0; flex-shrink: 0;
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      transition: background 120ms, color 120ms;
+      .material-icons { font-size: 16px; }
+      &:hover { background: var(--surface-hover); color: var(--text-secondary); }
+      &.ch-on { color: var(--accent-color); }
     }
-    .slider {
-      position: absolute; inset: 0;
-      background: var(--surface-border); border-radius: 20px;
-      transition: background 200ms; cursor: pointer;
-      &::before {
-        content: '';
-        position: absolute; left: 3px; top: 3px;
-        width: 14px; height: 14px;
-        border-radius: 50%; background: #fff;
-        transition: transform 200ms;
-      }
-    }
-    input:checked + .slider { background: var(--accent-color); }
-    input:checked + .slider::before { transform: translateX(16px); }
-    input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
 
     /* Per-project overrides */
     .inbox-override-list { }
@@ -402,23 +358,37 @@ const EVENT_ROWS: SettingRow[] = [
       &:hover { background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
     }
     .inbox-expand {
-      padding: 8px 16px 12px 48px;
+      padding: 6px 12px 10px 16px;
       background: var(--surface-bg);
       border-bottom: 1px solid var(--surface-border);
-      display: flex; flex-direction: column; gap: 7px;
+      display: flex; flex-direction: column; gap: 2px;
     }
+    .ie-header {
+      display: flex; justify-content: flex-end; gap: 4px;
+      padding-right: 2px; margin-bottom: 2px;
+    }
+    .ie-ch-legend { font-size: 13px; color: var(--text-muted); width: 28px; text-align: center; }
     .ie-row {
-      display: flex; align-items: center; gap: 7px;
-      font-size: 13px; color: var(--text-secondary); cursor: pointer;
-      input[type=checkbox] { cursor: pointer; accent-color: var(--accent-color); }
+      display: flex; align-items: center; gap: 8px;
+      padding: 3px 0;
     }
-    .ie-icon { font-size: 15px; color: var(--text-muted); }
+    .ie-icon  { font-size: 15px; color: var(--text-muted); flex-shrink: 0; }
+    .ie-label { font-size: 13px; color: var(--text-secondary); flex: 1; }
+    .ie-ch-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; border: 0; flex-shrink: 0;
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      transition: background 120ms, color 120ms;
+      .material-icons { font-size: 15px; }
+      &:hover { background: var(--surface-hover); color: var(--text-secondary); }
+      &.ie-ch-on { color: var(--accent-color); }
+    }
     .reset-btn {
       display: flex; align-items: center; gap: 4px;
       font-size: 11px; color: var(--text-muted);
       background: transparent; border: 1px solid var(--surface-border);
       cursor: pointer; padding: 4px 8px; border-radius: 5px;
-      font-family: inherit; margin-top: 4px; width: fit-content;
+      font-family: inherit; margin-top: 6px; width: fit-content;
       &:hover { color: #e53935; border-color: #e53935; }
     }
     .due-reminder-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
@@ -459,10 +429,11 @@ export class SettingsPageComponent implements OnInit {
 
   readonly DUE_REMINDER_PRESETS = DUE_REMINDER_PRESETS;
 
-  activeTab     = signal('general');
-  expandedInbox = signal<string | null>(null);
-  eventRows     = EVENT_ROWS;
-  inboxes       = this.inboxStore.inboxes;
+  activeTab       = signal('general');
+  expandedInbox   = signal<string | null>(null);
+  eventRows       = EVENT_ROWS;
+  inboxEventRows  = INBOX_EVENT_ROWS;
+  inboxes         = this.inboxStore.inboxes;
   userEmail     = computed(() => this.auth.user()?.email ?? '');
   timezone  = 'UTC';
   timezones = TIMEZONES;
@@ -513,7 +484,7 @@ export class SettingsPageComponent implements OnInit {
     this.api.patch('/users/me/timezone', { timezone: tz }).subscribe();
   }
 
-  saveGlobal(key: keyof NotificationSettings | string, value: any): void {
+  saveGlobal(key: string, value: any): void {
     this.notifSvc.upsertSettings(null, { [key]: value });
   }
 
