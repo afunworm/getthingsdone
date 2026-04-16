@@ -81,10 +81,10 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
             <div class="sort-backdrop" (click)="upcomingOpen.set(false)"></div>
           }
           <div class="upcoming-compound" [class.active]="!!state().comingUp">
-            <span class="upcoming-static-label">
+            <button class="upcoming-static-label" (click)="toggleUpcoming()" title="Toggle upcoming filter">
               <span class="material-icons" style="font-size:12px">event_available</span>
               Upcoming
-            </span>
+            </button>
             <button class="upcoming-period-btn"
               (click)="upcomingOpen.set(!upcomingOpen())"
               title="Filter by upcoming due date">
@@ -209,8 +209,10 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
       display: flex; align-items: center; gap: 3px;
       padding: 3px 8px 3px 10px;
       font-size: 11px; font-weight: 500; color: var(--text-secondary);
-      border-right: 1px solid var(--surface-border);
-      white-space: nowrap; user-select: none;
+      border: 0; border-right: 1px solid var(--surface-border);
+      background: transparent; cursor: pointer; font-family: inherit;
+      white-space: nowrap; user-select: none; transition: color 120ms;
+      &:hover { color: var(--text-primary); }
       .active & { color: var(--accent-color); border-right-color: color-mix(in srgb, var(--accent-color) 35%, transparent); }
     }
     .upcoming-period-btn {
@@ -339,6 +341,7 @@ export class FilterBarComponent {
   upcomingOpen = signal(false);
   saving       = signal(false);
   viewName     = '';
+  private lastComingUp: ComingUpWindow = 'week';
 
   constructor() {
     // Load persisted state once settings are ready
@@ -350,6 +353,7 @@ export class FilterBarComponent {
         // Backward compat: old boolean comingUp → 'all'
         if (raw.comingUp === true) raw.comingUp = 'all';
         const loaded: FilterSortState = { ...DEFAULT_FILTER_STATE, ...raw };
+        if (loaded.comingUp) this.lastComingUp = loaded.comingUp;
         this.state.set(loaded);
         this.views.set(viewsJson ? JSON.parse(viewsJson) : []);
         this.stateChange.emit(loaded);
@@ -368,9 +372,19 @@ export class FilterBarComponent {
     this.persist();
   }
 
+  toggleUpcoming(): void {
+    this.activeViewId.set(null);
+    this.upcomingOpen.set(false);
+    const current = this.state().comingUp;
+    const next = current ? false : this.lastComingUp;
+    this.state.update((s) => ({ ...s, comingUp: next }));
+    this.persist();
+  }
+
   setComingUp(value: ComingUpWindow): void {
     this.activeViewId.set(null);
     this.upcomingOpen.set(false);
+    this.lastComingUp = value;
     this.state.update((s) => ({ ...s, comingUp: s.comingUp === value ? false : value }));
     this.persist();
   }
