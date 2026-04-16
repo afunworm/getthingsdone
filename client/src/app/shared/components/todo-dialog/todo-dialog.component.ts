@@ -250,9 +250,40 @@ const DEFAULT_STEPS: StepDef[] = [
               </p>
             }
           </div>
-          <div class="field">
-            <label class="field-label">Reminder</label>
-            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" (change)="onCreateReminderManualChange()" />
+          <!-- Reminders (create mode) -->
+          <div class="field create-reminders-field">
+            <div class="create-reminders-hdr">
+              <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
+              <span class="field-label" style="margin:0">Reminders</span>
+              @if (form.pendingReminders.length) {
+                <span class="section-count">{{ form.pendingReminders.length }}</span>
+              }
+            </div>
+            <div class="reminder-quick">
+              <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'day')">In 1 day</button>
+              <button class="reminder-quick-btn" (click)="addCreateReminderIn(3, 'day')">In 3 days</button>
+              <button class="reminder-quick-btn" (click)="addCreateReminderIn(1, 'week')">In 1 week</button>
+              <span class="reminder-sep">or</span>
+              <input type="datetime-local" class="reminder-date-input" [(ngModel)]="createCustomReminderDate" />
+              @if (createCustomReminderDate) {
+                <button class="btn btn-primary btn-sm" (click)="addCreateCustomReminder()">Set</button>
+              }
+            </div>
+            @for (r of form.pendingReminders; track r.id) {
+              <div class="reminder-row">
+                <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
+                <span class="reminder-time">{{ formatCreateReminder(r.remindAt) }}</span>
+                <button class="btn-icon reminder-email-toggle" [class.active]="r.notifyEmail"
+                  (click)="r.notifyEmail = !r.notifyEmail"
+                  [title]="r.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
+                  <span class="material-icons" style="font-size:13px">email</span>
+                  <span class="reminder-email-label">Email</span>
+                </button>
+                <button class="btn-icon reminder-del" (click)="removeCreateReminder(r.id)" title="Remove reminder">
+                  <span class="material-icons" style="font-size:13px">close</span>
+                </button>
+              </div>
+            }
           </div>
 
           <!-- Assignees (create mode — projects only) -->
@@ -456,6 +487,7 @@ const DEFAULT_STEPS: StepDef[] = [
                     (click)="toggleReminderEmail(r)"
                     [title]="r.notify_email ? 'Email on (click to disable)' : 'Email off (click to enable)'">
                     <span class="material-icons" style="font-size:13px">email</span>
+                    <span class="reminder-email-label">Email</span>
                   </button>
                   <button class="btn-icon reminder-del" (click)="deleteReminder(r.id)" title="Remove reminder">
                     <span class="material-icons" style="font-size:13px">close</span>
@@ -832,6 +864,8 @@ const DEFAULT_STEPS: StepDef[] = [
     }
 
     .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .create-reminders-field { gap: 6px; }
+    .create-reminders-hdr { display: flex; align-items: center; gap: 6px; }
     .create-row-2 { display: flex; gap: 12px; }
     .recurrence-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
     .recur-warn {
@@ -1093,11 +1127,14 @@ const DEFAULT_STEPS: StepDef[] = [
       color: #43a047; border-radius: 8px;
     }
     .reminder-email-toggle {
-      width: 20px; height: 20px; opacity: 0; transition: opacity 120ms, color 120ms;
-      color: var(--text-muted);
+      width: auto; height: 20px; padding: 0 6px; gap: 3px;
+      opacity: 0; transition: opacity 120ms, color 120ms;
+      color: var(--text-muted); border-radius: 10px;
+      font-size: 11px; font-family: inherit;
       .reminder-row:hover & { opacity: 1; }
-      &.active { color: var(--accent-color); opacity: 1; }
+      &.active { color: var(--accent-color); opacity: 1; background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
     }
+    .reminder-email-label { font-size: 11px; font-weight: 500; }
     .reminder-del {
       width: 20px; height: 20px; opacity: 0;
       transition: opacity 120ms;
@@ -1431,7 +1468,7 @@ export class TodoDialogComponent implements OnInit {
     description: '',
     dueDateStr: '',
     priority: 0,
-    reminderDate: '',
+    pendingReminders: [] as { id: string; remindAt: string; label: string; notifyEmail: boolean }[],
     isRecurring: false,
     recurrenceInterval: 1,
     recurrenceType: 'weekly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -1595,21 +1632,61 @@ export class TodoDialogComponent implements OnInit {
     });
   }
 
-  private createReminderAutoFilled = false;
+  createCustomReminderDate = '';
+  private createReminderAutoFillId: string | null = null;
 
   onCreateDueDateChange(dateStr: string): void {
-    if (dateStr && !this.form.reminderDate) {
+    if (dateStr && !this.createReminderAutoFillId) {
       this.userPrefs.load();
-      this.form.reminderDate = this.userPrefs.calcDueReminderDatetime(dateStr);
-      this.createReminderAutoFilled = true;
-    } else if (!dateStr && this.createReminderAutoFilled) {
-      this.form.reminderDate = '';
-      this.createReminderAutoFilled = false;
+      const remindAt = this.userPrefs.calcDueReminderDatetime(dateStr);
+      const id = crypto.randomUUID();
+      this.form.pendingReminders = [
+        ...this.form.pendingReminders,
+        { id, remindAt, label: 'Due date', notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email },
+      ];
+      this.createReminderAutoFillId = id;
+    } else if (!dateStr && this.createReminderAutoFillId) {
+      this.form.pendingReminders = this.form.pendingReminders.filter(
+        (r) => r.id !== this.createReminderAutoFillId,
+      );
+      this.createReminderAutoFillId = null;
     }
   }
 
-  onCreateReminderManualChange(): void {
-    this.createReminderAutoFilled = false;
+  addCreateReminderIn(amount: number, unit: 'day' | 'week'): void {
+    const ms = unit === 'day' ? amount * 86400000 : amount * 7 * 86400000;
+    const d = new Date(Date.now() + ms);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const remindAt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const label = `In ${amount} ${unit}${amount !== 1 ? 's' : ''}`;
+    this.form.pendingReminders = [
+      ...this.form.pendingReminders,
+      { id: crypto.randomUUID(), remindAt, label, notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email },
+    ];
+  }
+
+  addCreateCustomReminder(): void {
+    if (!this.createCustomReminderDate) return;
+    this.form.pendingReminders = [
+      ...this.form.pendingReminders,
+      {
+        id: crypto.randomUUID(),
+        remindAt: this.createCustomReminderDate,
+        label: '',
+        notifyEmail: this.notifSvc.getEffectiveSettings(null).notify_email,
+      },
+    ];
+    this.createCustomReminderDate = '';
+  }
+
+  removeCreateReminder(id: string): void {
+    if (id === this.createReminderAutoFillId) this.createReminderAutoFillId = null;
+    this.form.pendingReminders = this.form.pendingReminders.filter((r) => r.id !== id);
+  }
+
+  formatCreateReminder(remindAt: string): string {
+    const d = new Date(remindAt);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
   // ── Title editing ─────────────────────────────────────
@@ -1995,10 +2072,9 @@ subNextStepLabel(sub: any): string {
           this.api.post<any>('/todos', { title, projectId: this.data.projectId, parentTodoId: todo.id }),
         ),
       ];
-      if (this.form.reminderDate) {
-        const remindAt = Math.floor(new Date(this.form.reminderDate).getTime() / 1000);
-        const notifyEmail = this.notifSvc.getEffectiveSettings(null).notify_email;
-        followUp.push(this.api.post<any>(`/notifications/reminders/${todo.id}`, { remindAt, label: 'Due date', notifyEmail }));
+      for (const r of this.form.pendingReminders) {
+        const remindAt = Math.floor(new Date(r.remindAt).getTime() / 1000);
+        followUp.push(this.api.post<any>(`/notifications/reminders/${todo.id}`, { remindAt, label: r.label || undefined, notifyEmail: r.notifyEmail }));
         todo.reminder_count = (todo.reminder_count ?? 0) + 1;
       }
       if (followUp.length === 0) {
