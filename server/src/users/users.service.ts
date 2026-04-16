@@ -47,20 +47,6 @@ export class UsersService {
       .get(id);
   }
 
-  updateOverdueReminderTime(id: string, time: string) {
-    const result = this.db
-      .prepare(
-        'UPDATE users SET overdue_reminder_time = ?, updated_at = unixepoch() WHERE id = ?',
-      )
-      .run(time, id);
-    if (result.changes === 0) throw new NotFoundException('User not found');
-    return this.db
-      .prepare(
-        'SELECT id, email, name, role, avatar_url, timezone, overdue_reminder_time, created_at FROM users WHERE id = ?',
-      )
-      .get(id);
-  }
-
   getMe(id: string) {
     const user = this.db
       .prepare(

@@ -20,11 +20,6 @@ export class UsersController {
     return this.usersService.updateTimezone(user.id, timezone);
   }
 
-  @Patch('me/overdue-reminder-time')
-  updateOverdueReminderTime(@CurrentUser() user: any, @Body('time') time: string) {
-    return this.usersService.updateOverdueReminderTime(user.id, time);
-  }
-
   @Patch('me/due-reminder-offset')
   updateDueReminderOffset(@CurrentUser() user: any, @Body('offsetMins') offsetMins: number) {
     return this.usersService.setDueReminderOffset(user.id, offsetMins);
