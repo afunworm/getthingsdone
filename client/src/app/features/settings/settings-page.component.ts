@@ -76,7 +76,7 @@ const EVENT_ROWS: SettingRow[] = [
 
             <div class="card" style="margin-top:16px">
               <div class="card-hdr">Task reminders</div>
-              <div class="general-row">
+              <div id="tour-reminder" class="general-row">
                 <div class="general-info">
                   <div class="general-label">Default due date reminder</div>
                   <div class="general-desc">When a task is created or updated with a due date, a reminder is automatically added at this offset.</div>

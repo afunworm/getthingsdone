@@ -514,7 +514,7 @@ export class OnboardingService {
         popover: {
           title: 'Settings',
           description: `
-            Let's set up your personal preferences - timezone, daily reminder time,
+            Let's set up your personal preferences - timezone, default due date reminder,
             and notification options.
             <br><br>
             Click <strong>Next</strong> and we'll take you there.
@@ -530,8 +530,8 @@ export class OnboardingService {
         popover: {
           title: 'Your Timezone',
           description: `
-            Pick your local timezone. Used to reset daily reminder counters at midnight
-            and schedule your overdue digest correctly.
+            Pick your local timezone. Used to correctly calculate due date reminder times
+            and reset daily counters at midnight.
             <br><br><em>Change it now if needed - it saves automatically.</em>
           `,
           side: 'right',
@@ -539,14 +539,14 @@ export class OnboardingService {
         },
       },
 
-      // ── 24: Reminder time (click Notifications tab on Next) ───
+      // ── 24: Due date reminder offset (click Notifications tab on Next) ───
       {
         element: '#tour-reminder',
         popover: {
-          title: 'Daily Overdue Reminder',
+          title: 'Default Due Date Reminder',
           description: `
-            Time of day to receive the consolidated overdue-task digest -
-            sent in-app and by email if email is enabled.
+            When a task is created with a due date, a reminder is automatically added
+            at this offset - e.g. <em>1 day before</em> means you'll be reminded the day prior at 9 AM.
             <br><br><em>Change it now if needed - it saves automatically.</em>
           `,
           side: 'right',
