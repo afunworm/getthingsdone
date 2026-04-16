@@ -28,6 +28,9 @@ export class NotificationSchedulerService {
     `).all(now) as any[];
 
     for (const r of due) {
+      // Mark sent FIRST — prevents re-firing even if notification delivery fails.
+      this.db.prepare('UPDATE todo_reminders SET sent = 1 WHERE id = ?').run(r.id);
+
       const link = r.project_id ? `/projects/${r.project_id}` : '/inbox';
       const label = r.label && r.label !== '__auto_due__' ? ` (${r.label})` : '';
       this.notifications.create(r.user_id, {
@@ -38,8 +41,13 @@ export class NotificationSchedulerService {
         todoId: r.todo_id,
         projectId: r.project_id ?? undefined,
       }, !r.notify_email);
-      const sentChannels = r.notify_email ? 'app+email' : 'app';
-      this.db.prepare('UPDATE todo_reminders SET sent = 1, sent_channels = ? WHERE id = ?').run(sentChannels, r.id);
+
+      // Record which channels were used — non-critical, ignore if column not yet migrated.
+      try {
+        const sentChannels = r.notify_email ? 'app+email' : 'app';
+        this.db.prepare('UPDATE todo_reminders SET sent_channels = ? WHERE id = ?').run(sentChannels, r.id);
+      } catch { /* migration 020 may not have run yet */ }
+
       this.log.debug(`Custom reminder sent: ${r.id}`);
     }
   }
