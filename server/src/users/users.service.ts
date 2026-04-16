@@ -62,11 +62,26 @@ export class UsersService {
   }
 
   getMe(id: string) {
-    return this.db
+    const user = this.db
       .prepare(
         'SELECT id, email, name, role, avatar_url, timezone, overdue_reminder_time, onboarding_completed_at, created_at FROM users WHERE id = ?',
       )
-      .get(id);
+      .get(id) as any;
+    if (!user) return user;
+    const pref = this.db.prepare(
+      "SELECT value FROM user_settings WHERE user_id = ? AND key = 'due_reminder_offset_mins'",
+    ).get(id) as any;
+    user.due_reminder_offset_mins = pref ? +pref.value : 1440;
+    return user;
+  }
+
+  setDueReminderOffset(id: string, offsetMins: number) {
+    this.db.prepare(`
+      INSERT INTO user_settings (user_id, key, value, updated_at)
+      VALUES (?, 'due_reminder_offset_mins', ?, unixepoch())
+      ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value, updated_at = unixepoch()
+    `).run(id, String(offsetMins));
+    return this.getMe(id);
   }
 
   completeOnboarding(id: string) {

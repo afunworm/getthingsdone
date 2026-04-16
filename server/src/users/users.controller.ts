@@ -25,6 +25,11 @@ export class UsersController {
     return this.usersService.updateOverdueReminderTime(user.id, time);
   }
 
+  @Patch('me/due-reminder-offset')
+  updateDueReminderOffset(@CurrentUser() user: any, @Body('offsetMins') offsetMins: number) {
+    return this.usersService.setDueReminderOffset(user.id, offsetMins);
+  }
+
   @Patch('me/complete-onboarding')
   completeOnboarding(@CurrentUser() user: any) {
     return this.usersService.completeOnboarding(user.id);

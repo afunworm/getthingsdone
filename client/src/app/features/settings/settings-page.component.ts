@@ -6,6 +6,7 @@ import { InboxStoreService } from '../../core/services/inbox-store.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { OnboardingService } from '../../core/services/onboarding.service';
+import { UserPrefsService, DUE_REMINDER_PRESETS } from '../../core/services/user-prefs.service';
 
 const TIMEZONES = Intl.supportedValuesOf('timeZone');
 
@@ -70,6 +71,33 @@ const EVENT_ROWS: SettingRow[] = [
                     <option [value]="tz" [selected]="tz === timezone">{{ tz }}</option>
                   }
                 </select>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+              <div class="card-hdr">Task reminders</div>
+              <div class="general-row">
+                <div class="general-info">
+                  <div class="general-label">Default due date reminder</div>
+                  <div class="general-desc">When a task is created or updated with a due date, a reminder is automatically added at this offset.</div>
+                </div>
+                <div class="due-reminder-wrap">
+                  <select class="tz-select" [ngModel]="dueReminderSelectValue()"
+                    (ngModelChange)="onDueReminderSelectChange($event)">
+                    @for (p of DUE_REMINDER_PRESETS; track p.mins) {
+                      <option [value]="p.mins">{{ p.label }}</option>
+                    }
+                    <option value="custom">Custom</option>
+                  </select>
+                  @if (dueReminderIsCustom()) {
+                    <div class="custom-offset-row">
+                      <input type="number" class="hours-input" min="1"
+                        [ngModel]="customOffsetHours"
+                        (ngModelChange)="onCustomHoursChange($event)" />
+                      hours before
+                    </div>
+                  }
+                </div>
               </div>
             </div>
 
@@ -393,6 +421,17 @@ const EVENT_ROWS: SettingRow[] = [
       font-family: inherit; margin-top: 4px; width: fit-content;
       &:hover { color: #e53935; border-color: #e53935; }
     }
+    .due-reminder-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+    .custom-offset-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-secondary);
+    }
+    .hours-input {
+      width: 60px; padding: 4px 8px; border-radius: 6px;
+      border: 1px solid var(--surface-border);
+      background: var(--surface-bg); color: var(--text-primary);
+      font-family: inherit; font-size: 13px; text-align: center;
+    }
     .restart-tour-btn {
       display: flex; align-items: center; gap: 6px; flex-shrink: 0;
       font-size: 13px; font-weight: 500; color: var(--accent-color);
@@ -409,6 +448,7 @@ export class SettingsPageComponent implements OnInit {
   private inboxStore = inject(InboxStoreService);
   private auth      = inject(AuthService);
   onboarding        = inject(OnboardingService);
+  private userPrefs = inject(UserPrefsService);
 
   tabs = [
     { key: 'general',       label: 'General',       icon: 'tune'          },
@@ -416,6 +456,8 @@ export class SettingsPageComponent implements OnInit {
   ];
 
   private api = inject(ApiService);
+
+  readonly DUE_REMINDER_PRESETS = DUE_REMINDER_PRESETS;
 
   activeTab     = signal('general');
   expandedInbox = signal<string | null>(null);
@@ -425,15 +467,45 @@ export class SettingsPageComponent implements OnInit {
   timezone  = 'UTC';
   timezones = TIMEZONES;
 
+  customOffsetHours = 24;
+
+  dueReminderIsCustom = computed(() => {
+    const mins = this.userPrefs.dueReminderOffsetMins;
+    return !DUE_REMINDER_PRESETS.some((p) => p.mins === mins);
+  });
+
+  dueReminderSelectValue = computed(() =>
+    this.dueReminderIsCustom() ? 'custom' : String(this.userPrefs.dueReminderOffsetMins),
+  );
+
   globalSettings = computed(() =>
     this.notifSvc.getEffectiveSettings(null),
   );
 
   ngOnInit(): void {
     this.notifSvc.loadSettings();
+    this.userPrefs.load();
     this.api.get<any>('/users/me').subscribe((u) => {
       if (u?.timezone) this.timezone = u.timezone;
+      if (u?.due_reminder_offset_mins != null) {
+        const mins = +u.due_reminder_offset_mins;
+        const isPreset = DUE_REMINDER_PRESETS.some((p) => p.mins === mins);
+        if (!isPreset) this.customOffsetHours = Math.round(mins / 60) || 1;
+      }
     });
+  }
+
+  onDueReminderSelectChange(val: string): void {
+    if (val === 'custom') {
+      this.userPrefs.setDueReminderOffsetMins(this.customOffsetHours * 60);
+    } else {
+      this.userPrefs.setDueReminderOffsetMins(+val);
+    }
+  }
+
+  onCustomHoursChange(hours: number): void {
+    this.customOffsetHours = hours;
+    if (hours > 0) this.userPrefs.setDueReminderOffsetMins(hours * 60);
   }
 
   saveTimezone(tz: string): void {

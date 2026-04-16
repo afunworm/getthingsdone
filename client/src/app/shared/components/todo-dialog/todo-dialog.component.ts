@@ -9,6 +9,7 @@ import { forkJoin } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PriorityService } from '../../../core/services/priority.service';
+import { UserPrefsService } from '../../../core/services/user-prefs.service';
 import { AssignDialogComponent, Assignees } from '../assign-dialog/assign-dialog.component';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
@@ -209,7 +210,7 @@ const DEFAULT_STEPS: StepDef[] = [
                   <span class="material-icons sch-icon">event</span>
                   <input type="date" class="sch-date-input" [(ngModel)]="form.dueDateStr" (ngModelChange)="onCreateDueDateChange($event)" />
                   @if (form.dueDateStr) {
-                    <button class="sch-clear" (click)="form.dueDateStr = ''" title="Clear due date">
+                    <button class="sch-clear" (click)="form.dueDateStr = ''; onCreateDueDateChange('')" title="Clear due date">
                       <span class="material-icons" style="font-size:12px">close</span>
                     </button>
                   }
@@ -250,7 +251,7 @@ const DEFAULT_STEPS: StepDef[] = [
           </div>
           <div class="field">
             <label class="field-label">Reminder</label>
-            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />
+            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" (change)="onCreateReminderManualChange()" />
           </div>
 
           <!-- Assignees (create mode — projects only) -->
@@ -1284,6 +1285,7 @@ export class TodoDialogComponent implements OnInit {
   data: any = inject(DIALOG_DATA);
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  private userPrefs = inject(UserPrefsService);
   readonly prioritySvc = inject(PriorityService);
   private dialog = inject(Dialog);
   private cdr = inject(ChangeDetectorRef);
@@ -1567,10 +1569,21 @@ export class TodoDialogComponent implements OnInit {
     });
   }
 
+  private createReminderAutoFilled = false;
+
   onCreateDueDateChange(dateStr: string): void {
     if (dateStr && !this.form.reminderDate) {
-      this.form.reminderDate = `${dateStr}T09:00`;
+      this.userPrefs.load();
+      this.form.reminderDate = this.userPrefs.calcDueReminderDatetime(dateStr);
+      this.createReminderAutoFilled = true;
+    } else if (!dateStr && this.createReminderAutoFilled) {
+      this.form.reminderDate = '';
+      this.createReminderAutoFilled = false;
     }
+  }
+
+  onCreateReminderManualChange(): void {
+    this.createReminderAutoFilled = false;
   }
 
   // ── Title editing ─────────────────────────────────────
@@ -1627,12 +1640,23 @@ export class TodoDialogComponent implements OnInit {
       setTimeout(() => this.schedSaved.set(false), 2000);
 
       if (dueDate && !this.reminders().some((r) => r.label === 'Due date' && !r.sent)) {
-        const remindAt = Math.floor(new Date(this.schedDueDate() + 'T09:00:00').getTime() / 1000);
+        this.userPrefs.load();
+        const remindAt = Math.floor(
+          new Date(this.userPrefs.calcDueReminderDatetime(this.schedDueDate())).getTime() / 1000,
+        );
         this.api.post<any>(`/notifications/reminders/${this.todo.id}`, { remindAt, label: 'Due date' })
           .subscribe((r) => {
             this.reminders.update((list) => [...list, r]);
             this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
           });
+      } else if (!dueDate) {
+        const autoDue = this.reminders().find((r) => r.label === 'Due date' && !r.sent);
+        if (autoDue) {
+          this.api.delete(`/notifications/reminders/item/${autoDue.id}`).subscribe(() => {
+            this.reminders.update((list) => list.filter((r) => r.id !== autoDue.id));
+            this.todo.reminder_count = Math.max(0, (this.todo.reminder_count ?? 1) - 1);
+          });
+        }
       }
     });
   }
