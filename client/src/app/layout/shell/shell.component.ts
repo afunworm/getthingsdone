@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, NgZone, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, inject, signal, effect } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
@@ -1089,6 +1089,12 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   toggleSidebar(): void { this.sidebarOpen.update((v) => !v); }
   closeSidebar(): void  { this.sidebarOpen.set(false); }
+
+  // Sync unread count to browser tab title
+  private readonly _titleEffect = effect(() => {
+    const count = this.notifSvc.unreadCount();
+    document.title = count > 0 ? `(${count}) Get Things Done` : 'Get Things Done';
+  });
 
   // Notification panel
   notifPanelOpen = signal(false);
