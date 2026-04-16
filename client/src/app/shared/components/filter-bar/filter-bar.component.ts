@@ -5,10 +5,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/services/settings.service';
 
+export type ComingUpWindow = 'week' | 'month' | '3months' | '6months' | 'all';
+
 export interface FilterSortState {
   assignedByMe: boolean;
   overdue: boolean;
-  comingUp: boolean;
+  comingUp: false | ComingUpWindow;
   recurring: boolean;
   sortBy: 'manual' | 'due_asc' | 'due_desc' | 'title_asc' | 'title_desc' | 'step';
 }
@@ -24,7 +26,19 @@ export const DEFAULT_FILTER_STATE: FilterSortState = {
 };
 
 export function isFilterActive(s: FilterSortState): boolean {
-  return s.assignedByMe || s.overdue || s.comingUp || s.recurring || s.sortBy !== 'manual';
+  return s.assignedByMe || s.overdue || !!s.comingUp || s.recurring || s.sortBy !== 'manual';
+}
+
+/** Returns the unix-second cutoff for the coming-up window, or null for "all" (no upper bound). */
+export function comingUpCutoff(option: ComingUpWindow): number | null {
+  const d = new Date();
+  switch (option) {
+    case 'week':    d.setDate(d.getDate() + 7);       return Math.floor(d.getTime() / 1000);
+    case 'month':   d.setMonth(d.getMonth() + 1);     return Math.floor(d.getTime() / 1000);
+    case '3months': d.setMonth(d.getMonth() + 3);     return Math.floor(d.getTime() / 1000);
+    case '6months': d.setMonth(d.getMonth() + 6);     return Math.floor(d.getTime() / 1000);
+    default:        return null; // 'all'
+  }
 }
 
 const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
@@ -34,6 +48,14 @@ const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
   { value: 'title_asc',   label: 'Title A–Z' },
   { value: 'title_desc',  label: 'Title Z–A' },
   { value: 'step',        label: 'Step order' },
+];
+
+const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
+  { value: 'week',    label: 'This week' },
+  { value: 'month',   label: 'This month' },
+  { value: '3months', label: '3 months' },
+  { value: '6months', label: '6 months' },
+  { value: 'all',     label: 'All' },
 ];
 
 @Component({
@@ -54,9 +76,19 @@ const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
         </button>
       }
       @if (!hideFilters.includes('comingUp')) {
-        <button class="chip" [class.active]="state().comingUp" (click)="toggle('comingUp')" title="Has a due date that hasn't passed yet">
-          <span class="material-icons" style="font-size:12px">event_available</span>Coming Up
-        </button>
+        <div class="upcoming-group" [class.upcoming-active]="!!state().comingUp">
+          <span class="upcoming-label">
+            <span class="material-icons" style="font-size:12px">event_available</span>
+            Upcoming
+          </span>
+          @for (opt of UPCOMING_OPTIONS; track opt.value) {
+            <button
+              class="upcoming-btn"
+              [class.active]="state().comingUp === opt.value"
+              (click)="setComingUp(opt.value)"
+            >{{ opt.label }}</button>
+          }
+        </div>
       }
       @if (!hideFilters.includes('recurring')) {
         <button class="chip" [class.active]="state().recurring" (click)="toggle('recurring')" title="Recurring tasks only">
@@ -148,6 +180,38 @@ const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
         color: var(--accent-color); border-color: var(--accent-color); font-weight: 600;
       }
     }
+
+    /* Upcoming segmented button group */
+    .upcoming-group {
+      display: inline-flex; align-items: stretch;
+      border: 1px solid var(--surface-border);
+      border-radius: 20px; overflow: hidden;
+      transition: border-color 120ms;
+      &.upcoming-active { border-color: var(--accent-color); }
+    }
+    .upcoming-label {
+      display: flex; align-items: center; gap: 3px;
+      padding: 3px 8px 3px 10px;
+      font-size: 11px; font-weight: 500;
+      color: var(--text-muted);
+      border-right: 1px solid var(--surface-border);
+      white-space: nowrap; user-select: none;
+    }
+    .upcoming-active .upcoming-label { border-right-color: var(--accent-color); }
+    .upcoming-btn {
+      padding: 3px 8px;
+      border: 0; border-right: 1px solid var(--surface-border);
+      background: transparent; cursor: pointer;
+      font-family: inherit; font-size: 11px; font-weight: 500;
+      color: var(--text-secondary); transition: all 120ms; white-space: nowrap;
+      &:last-child { border-right: 0; }
+      &:hover { background: var(--surface-hover); color: var(--text-primary); }
+      &.active {
+        background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+        color: var(--accent-color); font-weight: 600;
+      }
+    }
+    .upcoming-active .upcoming-btn { border-right-color: color-mix(in srgb, var(--accent-color) 30%, transparent); }
 
     /* Separator between filter chips and saved views */
     .bar-sep {
@@ -248,6 +312,7 @@ export class FilterBarComponent {
   @ViewChild('nameInput') nameInput?: ElementRef<HTMLInputElement>;
 
   readonly SORT_OPTIONS = SORT_OPTIONS;
+  readonly UPCOMING_OPTIONS = UPCOMING_OPTIONS;
   readonly isActive = isFilterActive;
 
   state        = signal<FilterSortState>(DEFAULT_FILTER_STATE);
@@ -263,7 +328,10 @@ export class FilterBarComponent {
       if (this.settings.loaded() && this.settingsKey) {
         const stateJson = this.settings.get(`${this.settingsKey}.filterState`);
         const viewsJson = this.settings.get(`${this.settingsKey}.savedViews`);
-        const loaded = stateJson ? { ...DEFAULT_FILTER_STATE, ...JSON.parse(stateJson) } : DEFAULT_FILTER_STATE;
+        const raw = stateJson ? JSON.parse(stateJson) : {};
+        // Backward compat: old boolean comingUp → 'all'
+        if (raw.comingUp === true) raw.comingUp = 'all';
+        const loaded: FilterSortState = { ...DEFAULT_FILTER_STATE, ...raw };
         this.state.set(loaded);
         this.views.set(viewsJson ? JSON.parse(viewsJson) : []);
         this.stateChange.emit(loaded);
@@ -276,9 +344,15 @@ export class FilterBarComponent {
     this.stateChange.emit(this.state());
   }
 
-  toggle(key: 'assignedByMe' | 'overdue' | 'comingUp' | 'recurring'): void {
+  toggle(key: 'assignedByMe' | 'overdue' | 'recurring'): void {
     this.activeViewId.set(null);
     this.state.update((s) => ({ ...s, [key]: !s[key] }));
+    this.persist();
+  }
+
+  setComingUp(value: ComingUpWindow): void {
+    this.activeViewId.set(null);
+    this.state.update((s) => ({ ...s, comingUp: s.comingUp === value ? false : value }));
     this.persist();
   }
 

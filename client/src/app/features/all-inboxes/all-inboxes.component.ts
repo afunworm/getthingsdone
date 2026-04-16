@@ -10,7 +10,7 @@ import { SettingsService } from '../../core/services/settings.service';
 import { TaskListComponent, PromotedEvent } from '../../shared/components/task-list/task-list.component';
 import { SubtaskDroppedEvent } from '../../shared/components/todo-item/todo-item.component';
 import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-dialog.component';
-import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE } from '../../shared/components/filter-bar/filter-bar.component';
+import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE, comingUpCutoff } from '../../shared/components/filter-bar/filter-bar.component';
 import { PriorityService } from '../../core/services/priority.service';
 import { forkJoin, of, Subscription } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -306,7 +306,7 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
       if (this.filterMyTeams())  list = list.filter((item) => item.todo.assignees?.teams?.some((team: any) => this.userTeamIds().includes(team.id)));
       if (fs.assignedByMe)       list = list.filter((item) => item.todo.created_by === userId);
       if (fs.overdue)     list = list.filter((item) => item.todo.due_date && item.todo.due_date < nowSec && item.todo.flow_step_index < item.maxStep);
-      if (fs.comingUp)    list = list.filter((item) => item.todo.due_date && item.todo.due_date >= nowSec);
+      if (fs.comingUp)    { const cut = comingUpCutoff(fs.comingUp); list = list.filter((item) => item.todo.due_date && item.todo.due_date >= nowSec && (cut === null || item.todo.due_date <= cut)); }
       if (fs.recurring)   list = list.filter((item) => item.todo.is_recurring);
 
       if (fs.sortBy !== 'manual') {

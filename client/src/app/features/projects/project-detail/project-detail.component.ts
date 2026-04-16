@@ -12,7 +12,7 @@ import { TaskListComponent, PromotedEvent, ReorderEvent } from '../../../shared/
 import { SubtaskDroppedEvent } from '../../../shared/components/todo-item/todo-item.component';
 import { TodoDialogComponent } from '../../../shared/components/todo-dialog/todo-dialog.component';
 import { NewProjectDialogComponent } from '../new-project-dialog/new-project-dialog.component';
-import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE, isFilterActive } from '../../../shared/components/filter-bar/filter-bar.component';
+import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE, isFilterActive, comingUpCutoff } from '../../../shared/components/filter-bar/filter-bar.component';
 import { forkJoin, Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -343,7 +343,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
       if (this.filterMyTeams())  list = list.filter((t) => t.assignees?.teams?.some((team: any) => this.userTeamIds().includes(team.id)));
       if (fs.assignedByMe)       list = list.filter((t) => t.created_by === userId);
       if (fs.overdue)     list = list.filter((t) => t.due_date && t.due_date < nowSec && t.flow_step_index < maxStep);
-      if (fs.comingUp)    list = list.filter((t) => t.due_date && t.due_date >= nowSec);
+      if (fs.comingUp)    { const cut = comingUpCutoff(fs.comingUp); list = list.filter((t) => t.due_date && t.due_date >= nowSec && (cut === null || t.due_date <= cut)); }
       if (fs.recurring)   list = list.filter((t) => t.is_recurring);
 
       if (fs.sortBy !== 'manual') {

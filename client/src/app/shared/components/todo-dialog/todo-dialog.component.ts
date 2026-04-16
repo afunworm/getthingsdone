@@ -205,10 +205,6 @@ const DEFAULT_STEPS: StepDef[] = [
               </select>
             </div>
           </div>
-          <div class="field">
-            <label class="field-label">Reminder</label>
-            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />
-          </div>
           <div class="recurrence-row">
             <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="form.isRecurring" />
@@ -231,6 +227,10 @@ const DEFAULT_STEPS: StepDef[] = [
               A due date is required for recurring tasks.
             </p>
           }
+          <div class="field">
+            <label class="field-label">Reminder</label>
+            <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />
+          </div>
 
           <!-- Assignees (create mode — projects only) -->
           @if (!data.isInbox) {
@@ -333,10 +333,10 @@ const DEFAULT_STEPS: StepDef[] = [
             }
           </div>
 
-          <!-- ── Schedule ──────────────────────────────────── -->
+          <!-- ── Due Date ──────────────────────────────────── -->
           <div class="section">
             <div class="section-hdr">
-              <span class="section-label">Schedule</span>
+              <span class="section-label">Due Date</span>
             </div>
             <div class="sch-body">
               <div class="sch-grid">
