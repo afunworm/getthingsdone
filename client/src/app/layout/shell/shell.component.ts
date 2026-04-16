@@ -279,25 +279,6 @@ import { APP_VERSION } from '../../version';
                 (change)="saveProjNotif('on_task_comment', $any($event.target).checked)" />
               Comments
             </label>
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.on_upcoming"
-                (change)="saveProjNotif('on_upcoming', $any($event.target).checked)" />
-              Upcoming reminders
-            </label>
-            @if (projNotifSettings()!.on_upcoming) {
-              <div class="pn-sub-row">
-                <span style="color:var(--text-muted);font-size:11px">Notify</span>
-                <input type="number" class="pn-hours-input" min="1" max="168"
-                  [value]="projNotifSettings()!.upcoming_hours"
-                  (change)="saveProjNotif('upcoming_hours', +$any($event.target).value)" />
-                <span style="color:var(--text-muted);font-size:11px">hours before due</span>
-              </div>
-            }
-            <label class="pn-row">
-              <input type="checkbox" [checked]="projNotifSettings()!.on_past_due"
-                (change)="saveProjNotif('on_past_due', $any($event.target).checked)" />
-              Past due reminders
-            </label>
             <div class="pn-divider"></div>
             <label class="pn-row">
               <input type="checkbox" [checked]="projNotifSettings()!.notify_email"
@@ -768,16 +749,6 @@ import { APP_VERSION } from '../../version';
         display: flex; align-items: center; gap: 7px;
         font-size: 12px; color: var(--text-secondary); cursor: pointer;
         input[type=checkbox] { cursor: pointer; accent-color: var(--accent-color); }
-      }
-      .pn-sub-row {
-        display: flex; align-items: center; gap: 5px;
-        padding-left: 20px; margin-top: -2px;
-      }
-      .pn-hours-input {
-        width: 46px; padding: 2px 4px; border: 1px solid var(--surface-border);
-        border-radius: 4px; font-size: 12px; font-family: inherit;
-        background: var(--surface-bg); color: var(--text-primary);
-        text-align: center;
       }
       .pn-divider { height: 1px; background: var(--surface-border); margin: 4px 0; }
       .pn-reset { margin-top: 6px; text-align: center; }
