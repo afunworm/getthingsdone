@@ -350,10 +350,17 @@ export class NotificationsService {
     return this.db.prepare('SELECT * FROM todo_reminders WHERE id = ?').get(id);
   }
 
-  patchReminder(id: string, userId: string, notifyEmail: boolean): any {
-    this.db.prepare(
-      'UPDATE todo_reminders SET notify_email = ? WHERE id = ? AND user_id = ?',
-    ).run(notifyEmail ? 1 : 0, id, userId);
+  patchReminder(id: string, userId: string, notifyEmail?: boolean, remindAt?: number): any {
+    if (notifyEmail !== undefined) {
+      this.db.prepare(
+        'UPDATE todo_reminders SET notify_email = ? WHERE id = ? AND user_id = ?',
+      ).run(notifyEmail ? 1 : 0, id, userId);
+    }
+    if (remindAt !== undefined) {
+      this.db.prepare(
+        'UPDATE todo_reminders SET remind_at = ?, sent = 0 WHERE id = ? AND user_id = ?',
+      ).run(remindAt, id, userId);
+    }
     return this.db.prepare('SELECT * FROM todo_reminders WHERE id = ?').get(id);
   }
 

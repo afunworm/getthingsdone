@@ -104,10 +104,10 @@ export class NotificationsController {
   @Patch('reminders/item/:id')
   patchReminder(
     @Param('id') id: string,
-    @Body() body: { notifyEmail: boolean },
+    @Body() body: { notifyEmail?: boolean; remindAt?: number },
     @CurrentUser() user: any,
   ) {
-    return this.svc.patchReminder(id, user.id, body.notifyEmail);
+    return this.svc.patchReminder(id, user.id, body.notifyEmail, body.remindAt);
   }
 
   @Delete('reminders/item/:id')

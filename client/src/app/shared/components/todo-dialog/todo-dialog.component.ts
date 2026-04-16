@@ -272,7 +272,18 @@ const DEFAULT_STEPS: StepDef[] = [
             @for (r of form.pendingReminders; track r.id) {
               <div class="reminder-row">
                 <span class="material-icons" style="font-size:14px;color:var(--text-muted)">alarm</span>
-                <span class="reminder-time">{{ formatCreateReminder(r.remindAt) }}</span>
+                @if (editingReminderId() === r.id) {
+                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
+                    [value]="r.remindAt"
+                    (change)="r.remindAt = $any($event.target).value; editingReminderId.set(null)"
+                    (blur)="editingReminderId.set(null)"
+                    (keydown.escape)="editingReminderId.set(null)" />
+                } @else {
+                  <span class="reminder-time reminder-time-editable"
+                    (click)="editingReminderId.set(r.id)" title="Click to change time">
+                    {{ formatCreateReminder(r.remindAt) }}
+                  </span>
+                }
                 <button class="btn-icon reminder-email-toggle" [class.active]="r.notifyEmail"
                   (click)="r.notifyEmail = !r.notifyEmail"
                   [title]="r.notifyEmail ? 'Email on (click to disable)' : 'Email off (click to enable)'">
@@ -479,7 +490,18 @@ const DEFAULT_STEPS: StepDef[] = [
                 <span class="material-icons" style="font-size:14px;color:var(--text-muted)">
                   {{ r.sent ? 'check_circle' : 'alarm' }}
                 </span>
-                <span class="reminder-time">{{ formatReminder(r) }}</span>
+                @if (!r.sent && editingReminderId() === r.id) {
+                  <input type="datetime-local" class="reminder-date-input reminder-edit-input"
+                    [value]="reminderToDatetimeLocal(r.remind_at)"
+                    (change)="saveReminderTime(r, $event)"
+                    (blur)="editingReminderId.set(null)"
+                    (keydown.escape)="editingReminderId.set(null)" />
+                } @else {
+                  <span class="reminder-time" [class.reminder-time-editable]="!r.sent"
+                    (click)="!r.sent && editingReminderId.set(r.id)" title="{{ r.sent ? '' : 'Click to change time' }}">
+                    {{ formatReminder(r) }}
+                  </span>
+                }
                 @if (r.sent) { <span class="reminder-sent-label">sent</span> }
                 @if (!r.sent) {
                   <button class="btn-icon reminder-email-toggle"
@@ -1121,6 +1143,12 @@ const DEFAULT_STEPS: StepDef[] = [
     }
     .reminder-sent { opacity: 0.55; }
     .reminder-time { flex: 1; font-size: 13px; color: var(--text-secondary); }
+    .reminder-time-editable {
+      cursor: pointer; border-radius: 4px; padding: 1px 3px; margin: -1px -3px;
+      transition: background 80ms, color 80ms;
+      &:hover { background: var(--surface-hover); color: var(--accent-color); }
+    }
+    .reminder-edit-input { flex: 1; }
     .reminder-sent-label {
       font-size: 10px; font-weight: 600; padding: 1px 6px;
       background: color-mix(in srgb, #43a047 15%, transparent);
@@ -1373,6 +1401,7 @@ export class TodoDialogComponent implements OnInit {
   newSubtask = '';
   newCreateSubtask = '';
   customReminderDate = '';
+  editingReminderId = signal<string | null>(null);
 
   // Edit state
   editingTitle = signal(false);
@@ -1603,6 +1632,26 @@ export class TodoDialogComponent implements OnInit {
         this.reminders.update((list) => [...list, r]);
         this.todo.reminder_count = (this.todo.reminder_count ?? 0) + 1;
         this.customReminderDate = '';
+      });
+  }
+
+  /** Convert unix seconds → "YYYY-MM-DDTHH:MM" for datetime-local input value. */
+  reminderToDatetimeLocal(remindAt: number): string {
+    const d = new Date(remindAt * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  saveReminderTime(r: any, event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    if (!val) { this.editingReminderId.set(null); return; }
+    const remindAt = Math.floor(new Date(val).getTime() / 1000);
+    this.editingReminderId.set(null);
+    this.api.patch(`/notifications/reminders/item/${r.id}`, { remindAt })
+      .subscribe((updated: any) => {
+        this.reminders.update((list) =>
+          list.map((x) => x.id === r.id ? { ...x, remind_at: updated.remind_at, sent: 0 } : x),
+        );
       });
   }
 
