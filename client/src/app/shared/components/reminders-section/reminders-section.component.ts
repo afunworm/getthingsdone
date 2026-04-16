@@ -144,6 +144,7 @@ import { NotificationService } from '../../../core/services/notification.service
             }
             @if (r.sent) {
               <span class="reminder-sent-channels">
+                <span class="rsc-label">Sent</span>
                 <span class="material-icons rsc-icon" title="In-app notification sent">notifications</span>
                 @if (r.sent_channels === 'app+email') {
                   <span class="material-icons rsc-icon" title="Email sent">email</span>
@@ -312,7 +313,10 @@ import { NotificationService } from '../../../core/services/notification.service
     .reminder-edit-input { flex: 1; }
 
     .reminder-sent-channels {
-      display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+    }
+    .rsc-label {
+      font-size: 10px; font-weight: 600; color: #43a047;
     }
     .rsc-icon {
       font-size: 13px; color: #43a047;
