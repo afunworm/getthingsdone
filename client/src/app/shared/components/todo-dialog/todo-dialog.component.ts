@@ -190,51 +190,64 @@ const DEFAULT_STEPS: StepDef[] = [
             <label class="field-label">Description</label>
             <textarea class="field-textarea" [(ngModel)]="form.description" rows="3" placeholder="Optional"></textarea>
           </div>
-          <div class="create-row-2">
-            <div class="field" style="flex:1">
-              <label class="field-label">Due date</label>
-              <input class="field-input" type="date" [(ngModel)]="form.dueDateStr" />
-            </div>
-            <div class="field" style="flex:1">
-              <label class="field-label">Priority</label>
-              <select class="field-select" [(ngModel)]="form.priority">
-                <option [ngValue]="0">None</option>
-                @for (lvl of prioritySvc.levels(); track lvl.value) {
-                  <option [ngValue]="lvl.value">{{ lvl.label }}</option>
-                }
-              </select>
-            </div>
+          <div class="field">
+            <label class="field-label">Priority</label>
+            <select class="field-select" [(ngModel)]="form.priority">
+              <option [ngValue]="0">None</option>
+              @for (lvl of prioritySvc.levels(); track lvl.value) {
+                <option [ngValue]="lvl.value">{{ lvl.label }}</option>
+              }
+            </select>
           </div>
-          <div class="recurrence-row">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="form.isRecurring" />
-              Recurring task
-            </label>
-            @if (form.isRecurring) {
-              <span style="font-size:13px;color:var(--text-secondary)">Every</span>
-              <input class="field-input inline-num" type="number" [(ngModel)]="form.recurrenceInterval" min="1" />
-              <select class="field-select inline-sel" [(ngModel)]="form.recurrenceType">
-                <option value="daily">Days</option>
-                <option value="weekly">Weeks</option>
-                <option value="monthly">Months</option>
-                <option value="yearly">Years</option>
-              </select>
-            }
-          </div>
-          @if (form.isRecurring && !form.dueDateStr) {
-            <p class="recur-warn">
-              <span class="material-icons" style="font-size:13px">warning</span>
-              A due date is required for recurring tasks.
-            </p>
-          }
-          @if (createNextOccurrences.length) {
-            <div class="sch-occurrences" style="margin-top:4px;margin-bottom:2px">
-              <span class="sch-occ-label">Next occurrences</span>
-              @for (d of createNextOccurrences; track d) {
-                <span class="sch-occ-date">{{ d }}</span>
+          <div class="section">
+            <div class="section-hdr">
+              <span class="section-label">Due Date</span>
+            </div>
+            <div class="sch-body">
+              <div class="sch-grid">
+                <div class="sch-row">
+                  <span class="material-icons sch-icon">event</span>
+                  <input type="date" class="sch-date-input" [(ngModel)]="form.dueDateStr" />
+                  @if (form.dueDateStr) {
+                    <button class="sch-clear" (click)="form.dueDateStr = ''" title="Clear due date">
+                      <span class="material-icons" style="font-size:12px">close</span>
+                    </button>
+                  }
+                </div>
+                <div class="sch-row">
+                  <span class="material-icons sch-icon">repeat</span>
+                  <label class="sch-toggle-label">
+                    <input type="checkbox" [(ngModel)]="form.isRecurring" />
+                    Recurring
+                  </label>
+                  @if (form.isRecurring) {
+                    <span class="sch-every">every</span>
+                    <input type="number" class="sch-num" min="1" [(ngModel)]="form.recurrenceInterval" />
+                    <select class="sch-type" [(ngModel)]="form.recurrenceType">
+                      <option value="daily">days</option>
+                      <option value="weekly">weeks</option>
+                      <option value="monthly">months</option>
+                      <option value="yearly">years</option>
+                    </select>
+                  }
+                </div>
+              </div>
+              @if (createNextOccurrences.length) {
+                <div class="sch-occurrences">
+                  <span class="sch-occ-label">Next occurrences</span>
+                  @for (d of createNextOccurrences; track d) {
+                    <span class="sch-occ-date">{{ d }}</span>
+                  }
+                </div>
               }
             </div>
-          }
+            @if (form.isRecurring && !form.dueDateStr) {
+              <p class="recur-warn">
+                <span class="material-icons" style="font-size:13px">warning</span>
+                A due date is required for recurring tasks.
+              </p>
+            }
+          </div>
           <div class="field">
             <label class="field-label">Reminder</label>
             <input class="field-input" type="datetime-local" [(ngModel)]="form.reminderDate" />

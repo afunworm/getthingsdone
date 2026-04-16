@@ -579,7 +579,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
   // ── Task CRUD dialogs ────────────────────────────────────
   openCreate(): void {
     const ref = this.dialog.open(TodoDialogComponent, {
-      width: '540px', maxHeight: '90vh', hasBackdrop: true,
+      width: '640px', maxHeight: '90vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
       data: { mode: 'create', projectId: this.id, flowSteps: this.project()?.flow_steps },
     });

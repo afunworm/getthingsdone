@@ -484,7 +484,7 @@ export class InboxComponent implements OnInit, OnDestroy {
   // ── Task dialogs ──────────────────────────────────────
   openCreate(): void {
     const ref = this.dialog.open(TodoDialogComponent, {
-      width: '540px', maxHeight: '90vh', hasBackdrop: true,
+      width: '640px', maxHeight: '90vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
       data: { mode: 'create', isInbox: true },
     });
