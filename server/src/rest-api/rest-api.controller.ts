@@ -1,7 +1,12 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Param, Body, Query, UseGuards, HttpCode, HttpStatus,
+  UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { ApiTokenGuard } from './api-token.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { TodosService } from '../todos/todos.service';
@@ -91,35 +96,59 @@ export class RestApiController {
    */
   @Post('tasks')
   @HttpCode(HttpStatus.CREATED)
-  createTask(@Body() dto: any, @CurrentUser() user: any) {
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads'),
+        filename: (_req, file, cb) => cb(null, `${uuidv4()}${extname(file.originalname)}`),
+      }),
+      limits: { fileSize: 25 * 1024 * 1024 },
+    }),
+  )
+  createTask(
+    @Body() dto: any,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: any,
+  ) {
+    // Coerce form fields from multipart (strings) or JSON (numbers) uniformly
+    const num = (v: any) => (v != null && v !== '' ? Number(v) : undefined);
+
+    let task: any;
     if (dto.project_id) {
-      return this.todos.create(
+      task = this.todos.create(
         {
           title: dto.title,
           description: dto.description,
           projectId: dto.project_id,
-          dueDate: dto.due_date,
-          sortOrder: dto.sort_order,
-          priority: dto.priority,
+          dueDate:   num(dto.due_date),
+          sortOrder: num(dto.sort_order),
+          priority:  num(dto.priority),
           apiTokenId: user.apiTokenId,
         },
         user.id,
         user.role,
       );
+    } else {
+      task = this.inbox.create(
+        {
+          title: dto.title,
+          description: dto.description,
+          dueDate:   num(dto.due_date),
+          sortOrder: num(dto.sort_order),
+          priority:  num(dto.priority),
+          apiTokenId: user.apiTokenId,
+        },
+        user.id,
+      );
     }
 
-    // Personal inbox
-    return this.inbox.create(
-      {
-        title: dto.title,
-        description: dto.description,
-        dueDate: dto.due_date,
-        sortOrder: dto.sort_order,
-        priority: dto.priority,
-        apiTokenId: user.apiTokenId,
-      },
-      user.id,
-    );
+    if (file) {
+      // addTodoAttachment calls checkAllowedExtension internally
+      const attachment = this.todos.addTodoAttachment(task.id, file, user.id);
+      return { ...task, attachments: [attachment] };
+    }
+
+    return task;
   }
 
   /**

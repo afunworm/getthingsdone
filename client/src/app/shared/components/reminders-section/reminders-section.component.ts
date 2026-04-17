@@ -74,9 +74,8 @@ import { NotificationService } from '../../../core/services/notification.service
                 type="datetime-local"
                 class="reminder-date-input reminder-edit-input"
                 [value]="pending.remindAt"
-                (change)="onPendingReminderTimeChange($event)"
-                (blur)="editingReminderId.set(null)"
-                (keydown.escape)="editingReminderId.set(null)"
+                (blur)="savePendingOnBlur($event)"
+                (keydown.escape)="cancelEdit()"
               />
             } @else {
               <span
@@ -128,9 +127,8 @@ import { NotificationService } from '../../../core/services/notification.service
                 type="datetime-local"
                 class="reminder-date-input reminder-edit-input"
                 [value]="reminderToDatetimeLocal(r.remind_at)"
-                (change)="saveReminderTime(r, $event)"
-                (blur)="editingReminderId.set(null)"
-                (keydown.escape)="editingReminderId.set(null)"
+                (blur)="saveReminderOnBlur(r, $event)"
+                (keydown.escape)="cancelEdit()"
               />
             } @else {
               <span
@@ -495,7 +493,15 @@ export class RemindersSectionComponent implements OnInit, OnChanges {
     });
   }
 
-  onPendingReminderTimeChange(event: Event): void {
+  private _editCancelled = false;
+
+  cancelEdit(): void {
+    this._editCancelled = true;
+    this.editingReminderId.set(null);
+  }
+
+  savePendingOnBlur(event: FocusEvent): void {
+    if (this._editCancelled) { this._editCancelled = false; return; }
     const val = (event.target as HTMLInputElement).value;
     if (val) this.pendingDueDateReminder.update(p => p ? { ...p, remindAt: val, userEdited: true } : null);
     this.editingReminderId.set(null);
@@ -563,11 +569,12 @@ export class RemindersSectionComponent implements OnInit, OnChanges {
     });
   }
 
-  saveReminderTime(r: any, event: Event): void {
+  saveReminderOnBlur(r: any, event: FocusEvent): void {
+    if (this._editCancelled) { this._editCancelled = false; return; }
     const val = (event.target as HTMLInputElement).value;
-    if (!val) { this.editingReminderId.set(null); return; }
-    const remindAt = Math.floor(new Date(val).getTime() / 1000);
     this.editingReminderId.set(null);
+    if (!val) return;
+    const remindAt = Math.floor(new Date(val).getTime() / 1000);
     this.api.patch(`/notifications/reminders/item/${r.id}`, { remindAt }).subscribe(() => {
       this.reminders.update(list => list.map(x => x.id === r.id ? { ...x, remind_at: remindAt, sent: 0 } : x));
     });
