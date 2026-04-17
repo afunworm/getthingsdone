@@ -122,7 +122,8 @@ export interface SubtaskDroppedEvent {
                 </div>
               }
               @if (todo.description) {
-                <div class="todo-desc" [innerHTML]="sanitizeHtml(todo.description)"></div>
+                <div class="todo-desc" [innerHTML]="sanitizeHtml(todo.description)"
+                  (click)="onDescClick($event)"></div>
               }
             </div>
           </div>
@@ -348,6 +349,11 @@ export interface SubtaskDroppedEvent {
     .todo-desc {
       font-size: 12px; color: var(--text-secondary); margin-top: 1px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      a {
+        color: var(--accent-color); text-decoration: underline;
+        text-underline-offset: 2px; pointer-events: all;
+        &:hover { opacity: 0.8; }
+      }
     }
     .todo-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
     .meta-chip {
@@ -501,8 +507,20 @@ export class TodoItemComponent {
   prioritySvc       = inject(PriorityService);
   private sanitizer = inject(DomSanitizer);
 
+  onDescClick(e: MouseEvent): void {
+    if ((e.target as HTMLElement).closest('a')) e.stopPropagation();
+  }
+
   sanitizeHtml(html: string): SafeHtml {
-    const patched = html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+    const urlPattern = /\b(https?:\/\/[^\s<>"]+)/g;
+    // Auto-link bare URLs in text nodes (between tags) only
+    const linked = html.replace(/(>[^<]+)/g, (textNode) =>
+      textNode.replace(urlPattern, (url) =>
+        `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+      )
+    );
+    // Ensure any pre-existing <a> tags also open in a new tab
+    const patched = linked.replace(/<a\s(?![^>]*target=)/gi, '<a target="_blank" rel="noopener noreferrer" ');
     return this.sanitizer.bypassSecurityTrustHtml(patched);
   }
 
