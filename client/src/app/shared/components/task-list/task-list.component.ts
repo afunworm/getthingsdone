@@ -50,7 +50,7 @@ export interface ReorderEvent  { todos: any[]; }
             <div
               class="drag-item"
               appDraggable
-              [dzData]="{ type: 'task', todo }"
+              [dzData]="{ type: 'task', todo, index: $index }"
               [dzSourceId]="listId"
             >
               <span class="main-drag-handle" appDragHandle title="Drag to reorder or move">
