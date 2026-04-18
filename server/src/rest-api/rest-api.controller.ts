@@ -19,6 +19,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { TodosService } from '../todos/todos.service';
 import { InboxService } from '../inbox/inbox.service';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('v1')
 @UseGuards(ApiTokenGuard)
@@ -27,6 +28,7 @@ export class RestApiController {
     private readonly todos: TodosService,
     private readonly inbox: InboxService,
     private readonly db: DatabaseService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ── Meta ──────────────────────────────────────────────
@@ -190,8 +192,17 @@ export class RestApiController {
     @CurrentUser() user: any,
   ) {
     // Verify the task exists and the user has access (throws 403/404 otherwise)
-    this.todos.findById(id, user.id, user.role);
+    const task = this.todos.findById(id, user.id, user.role) as any;
     const attachments = files.map(f => this.todos.addTodoAttachment(id, f, user.id));
+
+    // Push ui_refresh so connected clients update the task's attachment icons immediately
+    const refreshPayload = { type: 'ui_refresh' as const, title: '', body: '', todoId: id, projectId: task.project_id ?? undefined };
+    if (task.project_id) {
+      this.notifications.pushToProjectMembers(task.project_id, refreshPayload);
+    } else if (task.inbox_user_id) {
+      this.notifications.pushToUser(task.inbox_user_id, refreshPayload);
+    }
+
     return { attachments };
   }
 }
