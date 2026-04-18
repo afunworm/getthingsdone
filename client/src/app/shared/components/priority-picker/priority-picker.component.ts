@@ -51,7 +51,7 @@ import { PriorityService } from '../../../core/services/priority.service';
           [class.meta-pri-active]="todo.priority > 0"
           [style.color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) : ''"
           [style.border-color]="todo.priority > 0 ? prioritySvc.getColor(todo.priority) + '55' : ''"
-          (click)="open.set(!open())"
+          (click)="toggle($event)"
           title="Set priority"
         >
           <span class="material-icons" style="font-size:12px">priority_high</span>
