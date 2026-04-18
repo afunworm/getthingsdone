@@ -180,9 +180,9 @@ curl "https://your-server/api/v1/tasks/todo_xyz789" \
 
 ### `POST /api/v1/tasks`
 
-Creates a new task.
+Creates a new task. Supports both `application/json` and `multipart/form-data`. Use multipart when attaching a file; use JSON for text-only tasks.
 
-**Body fields**
+**Fields**
 
 | Field         | Type    | Required | Description                                         |
 | ------------- | ------- | -------- | --------------------------------------------------- |
@@ -191,8 +191,10 @@ Creates a new task.
 | `project_id`  | string  | No       | Team inbox ID. Omit to create in the personal inbox |
 | `due_date`    | integer | No       | Unix timestamp (seconds)                            |
 | `priority`    | integer | No       | `0` none · `1` low · `2` medium · `3` urgent        |
+| `sort_order`  | integer | No       | Position hint within the list (lower = higher up)   |
+| `files`       | file(s) | No       | Attachments — multipart/form-data only. Up to 10 files, 25 MB each. Use the same field name `files` for every file. |
 
-**Create a task in the personal inbox**
+**Create a task in the personal inbox (JSON)**
 
 ```bash
 curl -X POST "https://your-server/api/v1/tasks" \
@@ -204,7 +206,7 @@ curl -X POST "https://your-server/api/v1/tasks" \
   }'
 ```
 
-**Create an urgent task in a project**
+**Create an urgent task in a project (JSON)**
 
 ```bash
 curl -X POST "https://your-server/api/v1/tasks" \
@@ -219,7 +221,43 @@ curl -X POST "https://your-server/api/v1/tasks" \
   }'
 ```
 
-**Response** — `201 Created`, returns the created task object.
+**Create a task with file attachments (multipart/form-data)**
+
+```bash
+# Single file
+curl -X POST "https://your-server/api/v1/tasks" \
+  -H "Authorization: Bearer gtd_..." \
+  -F "title=Support ticket #4821" \
+  -F "description=See attached screenshot" \
+  -F "project_id=proj_abc123" \
+  -F "priority=2" \
+  -F "files=@/path/to/screenshot.png"
+
+# Multiple files — repeat the `files` field
+curl -X POST "https://your-server/api/v1/tasks" \
+  -H "Authorization: Bearer gtd_..." \
+  -F "title=Support ticket #4821" \
+  -F "project_id=proj_abc123" \
+  -F "files=@/path/to/screenshot.png" \
+  -F "files=@/path/to/log.txt"
+```
+
+**Response** — `201 Created`, returns the created task object. When a file is attached, an `attachments` array is included:
+
+```json
+{
+  "id": "todo_xyz789",
+  "title": "Support ticket #4821",
+  "attachments": [
+    {
+      "id": "att_abc123",
+      "filename": "screenshot.png",
+      "url": "/uploads/3f8a1c2d.png",
+      "size": 142300
+    }
+  ]
+}
+```
 
 ---
 
@@ -237,6 +275,7 @@ Updates one or more fields on an existing task. Only fields present in the body 
 | `priority`        | integer         | `0`–`3`                              |
 | `flow_step_index` | integer         | Move to a specific step (0-based)    |
 | `project_id`      | string          | Move task to a different team inbox  |
+| `sort_order`      | integer         | Reposition within the list           |
 
 **Mark a task as done (set to last step)**
 
@@ -260,6 +299,38 @@ curl -X PATCH "https://your-server/api/v1/tasks/todo_xyz789" \
 ```
 
 **Response** — returns the updated task object.
+
+---
+
+### `POST /api/v1/tasks/:id/attachments`
+
+Adds one or more files to an existing task. Use this when you need to attach files after the task has already been created.
+
+Accepts `multipart/form-data` only. Use `files` as the field name, repeated for each file. Up to 10 files, 25 MB each.
+
+```bash
+# Attach a single file
+curl -X POST "https://your-server/api/v1/tasks/todo_xyz789/attachments" \
+  -H "Authorization: Bearer gtd_..." \
+  -F "files=@/path/to/report.pdf"
+
+# Attach multiple files
+curl -X POST "https://your-server/api/v1/tasks/todo_xyz789/attachments" \
+  -H "Authorization: Bearer gtd_..." \
+  -F "files=@/path/to/report.pdf" \
+  -F "files=@/path/to/screenshot.png"
+```
+
+**Response** — `201 Created`
+
+```json
+{
+  "attachments": [
+    { "id": "att_abc123", "filename": "report.pdf", "url": "/uploads/3f8a1c2d.pdf", "size": 204800 },
+    { "id": "att_def456", "filename": "screenshot.png", "url": "/uploads/9a1b2c3d.png", "size": 142300 }
+  ]
+}
+```
 
 ---
 
@@ -340,13 +411,31 @@ tasks = requests.get(f"{BASE}/tasks", headers=HEADERS, params={"priority": 3}).j
 for t in tasks:
     print(t["title"], t["due_date"])
 
-# Create a task
+# Create a task (JSON)
 new_task = requests.post(f"{BASE}/tasks", headers=HEADERS, json={
     "title": "Automated task from script",
     "priority": 2,
     "due_date": 1746144000,
 }).json()
 print("Created:", new_task["id"])
+
+# Create a task with file attachments (multipart/form-data)
+# For multiple files, pass a list of tuples under the same field name "files"
+with open("/path/to/report.pdf", "rb") as f1, open("/path/to/screenshot.png", "rb") as f2:
+    task_with_files = requests.post(
+        f"{BASE}/tasks",
+        headers=HEADERS,
+        data={
+            "title": "Support ticket with attachments",
+            "project_id": "proj_abc123",
+            "priority": "2",
+        },
+        files=[
+            ("files", ("report.pdf", f1, "application/pdf")),
+            ("files", ("screenshot.png", f2, "image/png")),
+        ],
+    ).json()
+print("Created:", task_with_files["id"], task_with_files.get("attachments"))
 
 # Mark it done (personal inbox = step 2)
 requests.patch(f"{BASE}/tasks/{new_task['id']}", headers=HEADERS, json={

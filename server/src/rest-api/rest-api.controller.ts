@@ -1,12 +1,19 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Param, Body, Query, UseGuards, HttpCode, HttpStatus,
-  UseInterceptors, UploadedFile,
+  UseInterceptors, UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+const uploadsStorage = diskStorage({
+  destination: join(process.cwd(), 'uploads'),
+  filename: (_req, file, cb) => cb(null, `${uuidv4()}${extname(file.originalname)}`),
+});
+const uploadsInterceptor = (max = 10) =>
+  FilesInterceptor('files', max, { storage: uploadsStorage, limits: { fileSize: 25 * 1024 * 1024 } });
+
 import { ApiTokenGuard } from './api-token.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { TodosService } from '../todos/todos.service';
@@ -96,18 +103,10 @@ export class RestApiController {
    */
   @Post('tasks')
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: join(process.cwd(), 'uploads'),
-        filename: (_req, file, cb) => cb(null, `${uuidv4()}${extname(file.originalname)}`),
-      }),
-      limits: { fileSize: 25 * 1024 * 1024 },
-    }),
-  )
+  @UseInterceptors(uploadsInterceptor())
   createTask(
     @Body() dto: any,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
     @CurrentUser() user: any,
   ) {
     // Coerce form fields from multipart (strings) or JSON (numbers) uniformly
@@ -142,10 +141,10 @@ export class RestApiController {
       );
     }
 
-    if (file) {
+    if (files?.length) {
       // addTodoAttachment calls checkAllowedExtension internally
-      const attachment = this.todos.addTodoAttachment(task.id, file, user.id);
-      return { ...task, attachments: [attachment] };
+      const attachments = files.map(f => this.todos.addTodoAttachment(task.id, f, user.id));
+      return { ...task, attachments };
     }
 
     return task;
@@ -178,5 +177,21 @@ export class RestApiController {
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteTask(@Param('id') id: string, @CurrentUser() user: any) {
     this.todos.delete(id, user.id, user.role);
+  }
+
+  // ── Attachments ───────────────────────────────────────
+
+  @Post('tasks/:id/attachments')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(uploadsInterceptor())
+  addAttachments(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: any,
+  ) {
+    // Verify the task exists and the user has access (throws 403/404 otherwise)
+    this.todos.findById(id, user.id, user.role);
+    const attachments = files.map(f => this.todos.addTodoAttachment(id, f, user.id));
+    return { attachments };
   }
 }
