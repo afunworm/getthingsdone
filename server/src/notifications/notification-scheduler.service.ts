@@ -33,14 +33,32 @@ export class NotificationSchedulerService {
 
       const link = r.project_id ? `/projects/${r.project_id}` : '/inbox';
       const label = r.label && r.label !== '__auto_due__' ? ` (${r.label})` : '';
-      this.notifications.create(r.user_id, {
-        type: 'task_reminder',
-        title: `Reminder: ${r.title}`,
-        body: `You asked to be reminded about this task${label}.`,
-        link,
-        todoId: r.todo_id,
-        projectId: r.project_id ?? undefined,
-      }, !r.notify_email);
+
+      // Collect all recipients: reminder creator + all assigned users (via direct or team assignment).
+      const assignedUserIds = (this.db.prepare(`
+        SELECT a.user_id AS id FROM todo_assignees a WHERE a.todo_id = ? AND a.user_id IS NOT NULL
+        UNION
+        SELECT tm.user_id AS id FROM todo_assignees a
+        JOIN team_members tm ON tm.team_id = a.team_id
+        WHERE a.todo_id = ? AND a.team_id IS NOT NULL
+      `).all(r.todo_id, r.todo_id) as any[]).map((row) => row.id);
+
+      const recipients = [...new Set([r.user_id, ...assignedUserIds])];
+
+      for (const userId of recipients) {
+        const isCreator = userId === r.user_id;
+        const body = isCreator
+          ? `You asked to be reminded about this task${label}.`
+          : `A reminder was set for this task${label}.`;
+        this.notifications.create(userId, {
+          type: 'task_reminder',
+          title: `Reminder: ${r.title}`,
+          body,
+          link,
+          todoId: r.todo_id,
+          projectId: r.project_id ?? undefined,
+        }, !r.notify_email);
+      }
 
       // Record which channels were used — non-critical, ignore if column not yet migrated.
       try {
@@ -48,7 +66,7 @@ export class NotificationSchedulerService {
         this.db.prepare('UPDATE todo_reminders SET sent_channels = ? WHERE id = ?').run(sentChannels, r.id);
       } catch { /* migration 020 may not have run yet */ }
 
-      this.log.debug(`Custom reminder sent: ${r.id}`);
+      this.log.debug(`Custom reminder sent: ${r.id} → ${recipients.length} recipient(s)`);
     }
   }
 }
