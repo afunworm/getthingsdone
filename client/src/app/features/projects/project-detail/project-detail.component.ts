@@ -599,6 +599,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
         mode: 'detail', todo,
         projectId: todo.project_id ?? this.id,
         flowSteps: this.project()?.flow_steps,
+        onUpdate: (updated: any) => this.todos.update((list) => this.mergeTodo(list, updated)),
       },
     });
     ref.closed.subscribe((result: any) => {

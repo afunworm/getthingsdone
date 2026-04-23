@@ -497,7 +497,7 @@ export class InboxComponent implements OnInit, OnDestroy {
     const ref = this.dialog.open(TodoDialogComponent, {
       width: '640px', maxHeight: '90vh', hasBackdrop: true,
       backdropClass: 'cdk-overlay-backdrop', panelClass: 'app-dialog-panel',
-      data: { mode: 'detail', todo, isInbox: !todo.project_id },
+      data: { mode: 'detail', todo, isInbox: !todo.project_id, onUpdate: (updated: any) => this.todos.update((list) => this.mergeTodo(list, updated)) },
     });
     ref.closed.subscribe((result: any) => {
       if (result === 'deleted') {

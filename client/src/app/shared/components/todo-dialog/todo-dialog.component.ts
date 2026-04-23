@@ -1523,6 +1523,7 @@ subNextStepLabel(sub: any): string {
   // ── Component update handlers ─────────────────────────
   onTodoUpdated(updated: any): void {
     this.todo = { ...this.todo, ...updated };
+    this.data.onUpdate?.(this.todo);
   }
 
   onTodoChanged(partial: Partial<any>): void {
