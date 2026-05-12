@@ -334,7 +334,7 @@ export interface SubtaskDroppedEvent {
 
     /* ── Todo body ───────────────────────────────────── */
     .todo-body { flex: 1; min-width: 0; cursor: pointer; }
-    .title-row { display: flex; align-items: flex-start; gap: 7px; }
+    .title-row { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
     .step-chip {
       display: inline-flex; align-items: center;
       padding: 2px 7px; border-radius: 20px;

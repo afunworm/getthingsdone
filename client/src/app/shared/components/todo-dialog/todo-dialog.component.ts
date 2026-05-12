@@ -904,7 +904,7 @@ const DEFAULT_STEPS: StepDef[] = [
       white-space: nowrap;
     }
     .sub-title {
-      flex: 1; font-size: 13px; color: var(--text-primary);
+      flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .sub-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
