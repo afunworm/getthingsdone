@@ -22,11 +22,11 @@ export interface SavedView {
 }
 
 export const DEFAULT_FILTER_STATE: FilterSortState = {
-  assignedByMe: false, overdue: false, comingUp: false, recurring: false, sortBy: 'manual',
+  assignedByMe: false, overdue: false, comingUp: false, recurring: false, sortBy: 'due_asc',
 };
 
 export function isFilterActive(s: FilterSortState): boolean {
-  return s.assignedByMe || s.overdue || !!s.comingUp || s.recurring || s.sortBy !== 'manual';
+  return s.assignedByMe || s.overdue || !!s.comingUp || s.recurring || s.sortBy !== 'due_asc';
 }
 
 /** Returns the unix-second cutoff for the coming-up window, or null for "all" (no upper bound). */
@@ -42,7 +42,7 @@ export function comingUpCutoff(option: ComingUpWindow): number | null {
 }
 
 const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
-  { value: 'manual',      label: 'Manual (drag order)' },
+  // { value: 'manual',      label: 'Manual (drag order)' },
   { value: 'due_asc',     label: 'Due date ↑' },
   { value: 'due_desc',    label: 'Due date ↓' },
   { value: 'title_asc',   label: 'Title A–Z' },

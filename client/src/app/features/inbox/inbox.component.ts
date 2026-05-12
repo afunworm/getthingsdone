@@ -7,7 +7,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { DragStateService } from '../../core/services/drag-state.service';
 import { InboxStoreService } from '../../core/services/inbox-store.service';
 import { SettingsService } from '../../core/services/settings.service';
-import { TaskListComponent, PromotedEvent, ReorderEvent } from '../../shared/components/task-list/task-list.component';
+import { TaskListComponent, PromotedEvent/*, ReorderEvent*/ } from '../../shared/components/task-list/task-list.component';
 import { SubtaskDroppedEvent } from '../../shared/components/todo-item/todo-item.component';
 import { TodoDialogComponent } from '../../shared/components/todo-dialog/todo-dialog.component';
 import { FilterBarComponent, FilterSortState, DEFAULT_FILTER_STATE, comingUpCutoff } from '../../shared/components/filter-bar/filter-bar.component';
@@ -121,8 +121,8 @@ const INBOX_STEPS = [
         [sidebarIds]="sidebarDropIds"
         [loading]="loading()"
         [emptyMessage]="emptyMessage"
-        [canReorder]="canReorder"
-        (reorder)="onReorder($event)"
+        <!-- [canReorder]="canReorder" -->
+        <!-- (reorder)="onReorder($event)" -->
         (open)="openDetail($event)"
         (advance)="advanceTodo($event)"
         (complete)="completeTodo($event)"
@@ -254,11 +254,11 @@ export class InboxComponent implements OnInit, OnDestroy {
     return (this.store.inboxes() ?? []).map((i) => `inbox-drop-${i.id}`);
   }
 
-  get canReorder(): boolean {
-    return this.filterSteps().length === 0 && this.filterPriorities().length === 0
-      && !this.filterMine() && !this.filterMyTeams()
-      && !this.hideDone() && this.filterState().sortBy === 'manual';
-  }
+  // get canReorder(): boolean {
+  //   return this.filterSteps().length === 0 && this.filterPriorities().length === 0
+  //     && !this.filterMine() && !this.filterMyTeams()
+  //     && !this.hideDone() && this.filterState().sortBy === 'manual';
+  // }
 
   get emptyMessage(): string {
     return this.hideDone() && this.todos().length > 0 ? 'All tasks are done!' : 'Your inbox is clear!';
@@ -399,10 +399,10 @@ export class InboxComponent implements OnInit, OnDestroy {
 
   // ── Task list event handlers ──────────────────────────
 
-  onReorder(ev: ReorderEvent): void {
-    this.todos.set(ev.todos);
-    this.api.patch('/todos/reorder', ev.todos.map((t, i) => ({ id: t.id, sortOrder: i }))).subscribe();
-  }
+  // onReorder(ev: ReorderEvent): void {
+  //   this.todos.set(ev.todos);
+  //   this.api.patch('/todos/reorder', ev.todos.map((t, i) => ({ id: t.id, sortOrder: i }))).subscribe();
+  // }
 
   onPromoted(ev: PromotedEvent): void {
     const { sub, parentId, insertIndex } = ev;

@@ -8,7 +8,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { InboxStoreService } from '../../../core/services/inbox-store.service';
 import { DragStateService } from '../../../core/services/drag-state.service';
 import { SettingsService } from '../../../core/services/settings.service';
-import { TaskListComponent, PromotedEvent, ReorderEvent } from '../../../shared/components/task-list/task-list.component';
+import { TaskListComponent, PromotedEvent/*, ReorderEvent*/ } from '../../../shared/components/task-list/task-list.component';
 import { SubtaskDroppedEvent } from '../../../shared/components/todo-item/todo-item.component';
 import { TodoDialogComponent } from '../../../shared/components/todo-dialog/todo-dialog.component';
 import { NewProjectDialogComponent } from '../new-project-dialog/new-project-dialog.component';
@@ -150,8 +150,8 @@ import { PriorityService } from '../../../core/services/priority.service';
           [todos]="filteredTodos()"
           [flowSteps]="project().flow_steps"
           [sidebarIds]="sidebarDropIds"
-          [canReorder]="canReorderMain"
-          (reorder)="onReorder($event)"
+          <!-- [canReorder]="canReorderMain" -->
+          <!-- (reorder)="onReorder($event)" -->
           (open)="openDetail($event)"
           (advance)="advanceTodo($event)"
           (complete)="completeTodo($event)"
@@ -309,11 +309,11 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
     ];
   }
 
-  get canReorderMain(): boolean {
-    return this.filterSteps().length === 0 && this.filterPriorities().length === 0
-      && !this.filterMine() && !this.filterMyTeams()
-      && !this.hideDone() && !isFilterActive(this.filterState());
-  }
+  // get canReorderMain(): boolean {
+  //   return this.filterSteps().length === 0 && this.filterPriorities().length === 0
+  //     && !this.filterMine() && !this.filterMyTeams()
+  //     && !this.hideDone() && !isFilterActive(this.filterState());
+  // }
 
   constructor() {
     effect(() => {
@@ -487,10 +487,10 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
 
   // ── Task list event handlers ──────────────────────────
 
-  onReorder(ev: ReorderEvent): void {
-    this.todos.set(ev.todos.map((t, i) => ({ ...t, sort_order: i })));
-    this.api.patch('/todos/reorder', ev.todos.map((t, i) => ({ id: t.id, sortOrder: i }))).subscribe();
-  }
+  // onReorder(ev: ReorderEvent): void {
+  //   this.todos.set(ev.todos.map((t, i) => ({ ...t, sort_order: i })));
+  //   this.api.patch('/todos/reorder', ev.todos.map((t, i) => ({ id: t.id, sortOrder: i }))).subscribe();
+  // }
 
   onPromoted(ev: PromotedEvent): void {
     const { sub, parentId, insertIndex } = ev;

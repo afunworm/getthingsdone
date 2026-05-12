@@ -53,7 +53,7 @@ export interface ReorderEvent  { todos: any[]; }
               [dzData]="{ type: 'task', todo, index: $index }"
               [dzSourceId]="listId"
             >
-              <span class="main-drag-handle" appDragHandle title="Drag to reorder or move">
+              <span class="main-drag-handle" appDragHandle title="Drag to move or make subtask">
                 <span class="material-icons" style="font-size:15px">drag_indicator</span>
               </span>
 
@@ -115,8 +115,8 @@ export class TaskListComponent {
   @Input() sidebarIds: string[]  = [];
   @Input() loading               = false;
   @Input() emptyMessage          = 'No tasks here';
-  @Input() canReorder            = true;
-  @Output() reorder          = new EventEmitter<ReorderEvent>();
+  // @Input() canReorder            = true;
+  // @Output() reorder          = new EventEmitter<ReorderEvent>();
   @Output() open             = new EventEmitter<any>();
   @Output() advance          = new EventEmitter<any>();
   @Output() complete         = new EventEmitter<any>();
@@ -149,10 +149,9 @@ export class TaskListComponent {
     }
     if (event.dragData?.type !== 'task') return;
     if (event.fromZoneId !== event.toZoneId) return;  // cross-list moves handled by sidebar zones
-    if (!this.canReorder) return;
-
-    const list = [...this.todos];
-    list.splice(event.currentIndex, 0, ...list.splice(event.previousIndex, 1));
-    this.reorder.emit({ todos: list });
+    // if (!this.canReorder) return;
+    // const list = [...this.todos];
+    // list.splice(event.currentIndex, 0, ...list.splice(event.previousIndex, 1));
+    // this.reorder.emit({ todos: list });
   }
 }
