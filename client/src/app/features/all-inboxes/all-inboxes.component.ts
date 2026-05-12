@@ -307,6 +307,8 @@ export class AllInboxesComponent implements OnInit, OnDestroy {
         list = [...list].sort((a, b) => {
           const ta = a.todo, tb = b.todo;
           switch (fs.sortBy) {
+            case 'created_desc': return (tb.created_at ?? 0) - (ta.created_at ?? 0);
+            case 'created_asc':  return (ta.created_at ?? 0) - (tb.created_at ?? 0);
             case 'due_asc':    return (ta.due_date ?? Infinity) - (tb.due_date ?? Infinity);
             case 'due_desc':
               if (!ta.due_date && !tb.due_date) return 0;

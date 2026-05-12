@@ -345,6 +345,8 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
       if (fs.sortBy !== 'manual') {
         list = [...list].sort((a, b) => {
           switch (fs.sortBy) {
+            case 'created_desc': return (b.created_at ?? 0) - (a.created_at ?? 0);
+            case 'created_asc':  return (a.created_at ?? 0) - (b.created_at ?? 0);
             case 'due_asc':   return (a.due_date ?? Infinity) - (b.due_date ?? Infinity);
             case 'due_desc':
               if (!a.due_date && !b.due_date) return 0;

@@ -12,7 +12,7 @@ export interface FilterSortState {
   overdue: boolean;
   comingUp: false | ComingUpWindow;
   recurring: boolean;
-  sortBy: 'manual' | 'due_asc' | 'due_desc' | 'title_asc' | 'title_desc' | 'step';
+  sortBy: 'manual' | 'created_desc' | 'created_asc' | 'due_asc' | 'due_desc' | 'title_asc' | 'title_desc' | 'step';
 }
 
 export interface SavedView {
@@ -22,11 +22,11 @@ export interface SavedView {
 }
 
 export const DEFAULT_FILTER_STATE: FilterSortState = {
-  assignedByMe: false, overdue: false, comingUp: false, recurring: false, sortBy: 'due_asc',
+  assignedByMe: false, overdue: false, comingUp: false, recurring: false, sortBy: 'created_desc',
 };
 
 export function isFilterActive(s: FilterSortState): boolean {
-  return s.assignedByMe || s.overdue || !!s.comingUp || s.recurring || s.sortBy !== 'due_asc';
+  return s.assignedByMe || s.overdue || !!s.comingUp || s.recurring || s.sortBy !== 'created_desc';
 }
 
 /** Returns the unix-second cutoff for the coming-up window, or null for "all" (no upper bound). */
@@ -43,6 +43,8 @@ export function comingUpCutoff(option: ComingUpWindow): number | null {
 
 const SORT_OPTIONS: { value: FilterSortState['sortBy']; label: string }[] = [
   // { value: 'manual',      label: 'Manual (drag order)' },
+  { value: 'created_desc', label: 'Created (newest)' },
+  { value: 'created_asc',  label: 'Created (oldest)' },
   { value: 'due_asc',     label: 'Due date ↑' },
   { value: 'due_desc',    label: 'Due date ↓' },
   { value: 'title_asc',   label: 'Title A–Z' },
@@ -131,7 +133,7 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
         @if (sortOpen()) {
           <div class="sort-backdrop" (click)="sortOpen.set(false)"></div>
         }
-        <button class="sort-btn" [class.sort-active]="state().sortBy !== 'due_asc'" (click)="sortOpen.set(!sortOpen())">
+        <button class="sort-btn" [class.sort-active]="state().sortBy !== 'created_desc'" (click)="sortOpen.set(!sortOpen())">
           <span class="material-icons" style="font-size:13px">sort</span>
           <span class="sort-label">{{ sortLabel(state().sortBy) }}</span>
           <span class="material-icons" style="font-size:15px">arrow_drop_down</span>
@@ -353,7 +355,7 @@ export class FilterBarComponent {
         // Backward compat: old boolean comingUp → 'all'
         if (raw.comingUp === true) raw.comingUp = 'all';
         // Backward compat: manual sort removed — migrate to default
-        if (raw.sortBy === 'manual') raw.sortBy = 'due_asc';
+        if (raw.sortBy === 'manual' || raw.sortBy === 'due_asc') raw.sortBy = 'created_desc';
         const loaded: FilterSortState = { ...DEFAULT_FILTER_STATE, ...raw };
         if (loaded.comingUp) this.lastComingUp = loaded.comingUp;
         this.state.set(loaded);
@@ -403,7 +405,7 @@ export class FilterBarComponent {
   }
 
   sortLabel(value: FilterSortState['sortBy']): string {
-    return SORT_OPTIONS.find((o) => o.value === value)?.label ?? 'Due date ↑';
+    return SORT_OPTIONS.find((o) => o.value === value)?.label ?? 'Created (newest)';
   }
 
   clear(): void {
