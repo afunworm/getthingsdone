@@ -895,7 +895,7 @@ const DEFAULT_STEPS: StepDef[] = [
       padding: 5px 4px; border-radius: 5px;
       transition: background 80ms;
       &:hover { background: var(--surface-hover); }
-      &.sub-done { opacity: .5; }
+      &.sub-done { opacity: .55; .sub-title { text-decoration: line-through; } }
     }
     .sub-chip {
       display: inline-flex; align-items: center;

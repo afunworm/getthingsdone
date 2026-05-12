@@ -249,12 +249,7 @@ export class TodayComponent implements OnInit, OnDestroy {
       if (selected.length > 0) list = list.filter((item) => selected.includes(item.inboxId));
 
       if (this.hideDone()) {
-        list = list
-          .filter((item) => item.todo.flow_step_index < item.maxStep)
-          .map((item) => ({
-            ...item,
-            todo: { ...item.todo, subtodos: (item.todo.subtodos ?? []).filter((s: any) => s.flow_step_index < item.maxStep) },
-          }));
+        list = list.filter((item) => item.todo.flow_step_index < item.maxStep);
       }
 
       if (fs.sortBy !== 'manual') {

@@ -335,9 +335,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
       const nowSec    = Math.floor(Date.now() / 1000);
 
       if (this.hideDone()) {
-        list = list
-          .filter((t) => t.flow_step_index < maxStep)
-          .map((t) => ({ ...t, subtodos: (t.subtodos ?? []).filter((s: any) => s.flow_step_index < maxStep) }));
+        list = list.filter((t) => t.flow_step_index < maxStep);
       }
       if (this.filterMine())     list = list.filter((t) => t.assignees?.users?.some((u: any) => u.id === userId));
       if (this.filterMyTeams())  list = list.filter((t) => t.assignees?.teams?.some((team: any) => this.userTeamIds().includes(team.id)));

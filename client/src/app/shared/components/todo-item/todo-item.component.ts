@@ -438,7 +438,7 @@ export interface SubtaskDroppedEvent {
       border-top: 1px solid var(--surface-border);
       cursor: default;
       &:first-child { border-top: 0; }
-      &.completed { opacity: .55; }
+      &.completed { opacity: .55; .sub-title { text-decoration: line-through; } }
       &.cdk-drag-animating { transition: transform 200ms cubic-bezier(0,0,0.2,1); }
     }
     .drag-handle {

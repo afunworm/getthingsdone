@@ -284,9 +284,7 @@ export class InboxComponent implements OnInit, OnDestroy {
       let list = this.todos();
 
       if (this.hideDone()) {
-        list = list
-          .filter((t) => t.flow_step_index < 2)
-          .map((t) => ({ ...t, subtodos: (t.subtodos ?? []).filter((s: any) => s.flow_step_index < 2) }));
+        list = list.filter((t) => t.flow_step_index < 2);
       }
       if (this.filterMine())     list = list.filter((t) => t.assignees?.users?.some((u: any) => u.id === userId));
       if (this.filterMyTeams())  list = list.filter((t) => t.assignees?.teams?.some((team: any) => teamIds.includes(team.id)));
