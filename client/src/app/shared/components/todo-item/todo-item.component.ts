@@ -451,7 +451,7 @@ export interface SubtaskDroppedEvent {
     .sub-right { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
     .sub-body { flex: 1; min-width: 0; cursor: pointer; }
     .sub-title {
-      font-size: 13px; font-weight: 400; color: var(--text-primary);
+      display: block; font-size: 13px; font-weight: 400; color: var(--text-primary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
