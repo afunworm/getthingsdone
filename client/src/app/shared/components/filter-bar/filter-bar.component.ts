@@ -131,7 +131,7 @@ const UPCOMING_OPTIONS: { value: ComingUpWindow; label: string }[] = [
         @if (sortOpen()) {
           <div class="sort-backdrop" (click)="sortOpen.set(false)"></div>
         }
-        <button class="sort-btn" [class.sort-active]="state().sortBy !== 'manual'" (click)="sortOpen.set(!sortOpen())">
+        <button class="sort-btn" [class.sort-active]="state().sortBy !== 'due_asc'" (click)="sortOpen.set(!sortOpen())">
           <span class="material-icons" style="font-size:13px">sort</span>
           <span class="sort-label">{{ sortLabel(state().sortBy) }}</span>
           <span class="material-icons" style="font-size:15px">arrow_drop_down</span>
@@ -352,6 +352,8 @@ export class FilterBarComponent {
         const raw = stateJson ? JSON.parse(stateJson) : {};
         // Backward compat: old boolean comingUp → 'all'
         if (raw.comingUp === true) raw.comingUp = 'all';
+        // Backward compat: manual sort removed — migrate to default
+        if (raw.sortBy === 'manual') raw.sortBy = 'due_asc';
         const loaded: FilterSortState = { ...DEFAULT_FILTER_STATE, ...raw };
         if (loaded.comingUp) this.lastComingUp = loaded.comingUp;
         this.state.set(loaded);
@@ -401,7 +403,7 @@ export class FilterBarComponent {
   }
 
   sortLabel(value: FilterSortState['sortBy']): string {
-    return SORT_OPTIONS.find((o) => o.value === value)?.label ?? 'Manual';
+    return SORT_OPTIONS.find((o) => o.value === value)?.label ?? 'Due date ↑';
   }
 
   clear(): void {
