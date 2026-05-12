@@ -217,7 +217,11 @@ export class RichTextEditorComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['content'] && this.editor && !changes['content'].isFirstChange()) {
-      this.editor.commands.setContent(changes['content'].currentValue || '');
+      const newContent = changes['content'].currentValue || '';
+      const currentContent = this.editor.isEmpty ? '' : this.editor.getHTML();
+      if (newContent !== currentContent) {
+        this.editor.commands.setContent(newContent);
+      }
     }
   }
 
