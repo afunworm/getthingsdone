@@ -150,8 +150,6 @@ import { PriorityService } from '../../../core/services/priority.service';
           [todos]="filteredTodos()"
           [flowSteps]="project().flow_steps"
           [sidebarIds]="sidebarDropIds"
-          <!-- [canReorder]="canReorderMain" -->
-          <!-- (reorder)="onReorder($event)" -->
           (open)="openDetail($event)"
           (advance)="advanceTodo($event)"
           (complete)="completeTodo($event)"

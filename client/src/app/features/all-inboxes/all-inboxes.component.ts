@@ -130,7 +130,6 @@ const INBOX_STEPS = [
         [sidebarIds]="[]"
         [loading]="loading()"
         emptyMessage="Nothing to show"
-        <!-- [canReorder]="false" -->
         (open)="openDetail($event)"
         (advance)="advanceTodo($event)"
         (complete)="completeTodo($event)"

@@ -110,7 +110,6 @@ function startOfTodaySec(): number {
         [sidebarIds]="[]"
         [loading]="loading()"
         emptyMessage="Nothing due today — enjoy the day!"
-        <!-- [canReorder]="false" -->
         (open)="openDetail($event)"
         (advance)="advanceTodo($event)"
         (complete)="completeTodo($event)"
