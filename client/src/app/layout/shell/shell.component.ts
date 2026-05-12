@@ -1151,7 +1151,10 @@ export class ShellComponent implements OnInit, OnDestroy {
   postponeOpenId  = signal<string | null>(null);
   postponeMenuPos = signal<{ top: number; right: number } | null>(null);
 
+  private _pendingReminders: AppNotification['payload'][] = [];
+  private _pendingOverdue: any[] = [];
   private reminderSub?: Subscription;
+  private dialogSub?: Subscription;
   private routerSub?: Subscription;
 
   ngOnInit(): void {
@@ -1168,22 +1171,43 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.prioritySvc.load();
     this.notifSvc.init();
     this.onboardingSvc.init();
+    this.dialogSub = this.dialog.afterAllClosed.subscribe(() => {
+      if (this._pendingReminders.length > 0) {
+        this.reminderQueue.update((q) => [...q, ...this._pendingReminders]);
+        this._pendingReminders = [];
+      }
+      if (this._pendingOverdue.length > 0) {
+        this.overdueItems.set(this._pendingOverdue);
+        this._pendingOverdue = [];
+      }
+    });
     this.reminderSub = this.notifSvc.refresh$.subscribe((payload) => {
       if (payload.type === 'task_reminder') {
-        this.reminderQueue.update((q) => [...q, payload]);
+        if (this.dialog.openDialogs.length > 0) {
+          this._pendingReminders.push(payload);
+        } else {
+          this.reminderQueue.update((q) => [...q, payload]);
+        }
       }
       if (payload.type === 'ui_refresh' && payload.projectId) {
         this.api.get<any>(`/projects/${payload.projectId}`).subscribe((p) => this.store.update(p));
       }
     });
     this.api.get<any[]>('/notifications/overdue-check').subscribe((items) => {
-      if (items.length > 0) this.overdueItems.set(items);
+      if (items.length > 0) {
+        if (this.dialog.openDialogs.length > 0) {
+          this._pendingOverdue = items;
+        } else {
+          this.overdueItems.set(items);
+        }
+      }
     });
   }
 
   ngOnDestroy(): void {
     this.notifSvc.destroy();
     this.reminderSub?.unsubscribe();
+    this.dialogSub?.unsubscribe();
     this.routerSub?.unsubscribe();
     document.removeEventListener('pointermove', this.boundReorderMove);
     document.removeEventListener('pointerup', this.boundReorderUp);
