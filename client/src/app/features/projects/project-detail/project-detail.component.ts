@@ -568,7 +568,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
     const title = this.quickTitle.trim();
     if (!title) return;
     this.api.post<any>('/todos', { title, projectId: this.id }).subscribe((todo) => {
-      this.todos.update((list) => [...list, todo]);
+      this.todos.update((list) => [todo, ...list]);
       this.quickTitle = '';
       this.store.adjustCounts(this.id, 1, 1);
     });
@@ -583,7 +583,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, OnChanges {
     });
     ref.closed.subscribe((todo: any) => {
       if (todo) {
-        this.todos.update((list) => [...list, todo]);
+        this.todos.update((list) => [todo, ...list]);
         this.store.adjustCounts(this.id, 1, 1);
       }
     });

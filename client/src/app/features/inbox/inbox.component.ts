@@ -474,7 +474,7 @@ export class InboxComponent implements OnInit, OnDestroy {
     const title = this.quickTitle.trim();
     if (!title) return;
     this.api.post<any>('/inbox', { title }).subscribe((todo) => {
-      this.todos.update((list) => [...list, todo]);
+      this.todos.update((list) => [todo, ...list]);
       this.quickTitle = '';
     });
   }
@@ -487,7 +487,7 @@ export class InboxComponent implements OnInit, OnDestroy {
       data: { mode: 'create', isInbox: true },
     });
     ref.closed.subscribe((result: any) => {
-      if (result) this.todos.update((list) => [...list, result]);
+      if (result) this.todos.update((list) => [result, ...list]);
     });
   }
 
