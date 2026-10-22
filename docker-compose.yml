@@ -8,6 +8,7 @@ networks:
 
 services:
   gtd:
+    container_name: gtd
     build: .
     networks:
       - pangolin
